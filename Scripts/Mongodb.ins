@@ -1,0 +1,506 @@
+##Added uatappusr,bkpadmin
+
+
+#!/bin/bash
+set -e  # Enablle error handling
+set -x 
+#
+# Purpose:
+#    To install MongoDB
+#
+# Parameters:
+#    $1 : Port Number
+#    $2 : Application Password
+#    $3 : Cluster
+
+# Check the parameters
+SYNTAX_ERR='Syntax Error. Parameters are: <Port Number> <App password>  <Cluster> <Version> '
+
+if [ "$1" ]; then
+   PORT=$1
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+if [ "$2" ]; then
+   APP_PWD=$2
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+if [ "$3" ]; then
+   CLUSTER=$3
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+
+if [ "$4" ]; then
+   DBVER=$4
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+if [ "$CLUSTER" = "YES" ]; then
+   # Prompt for additional parameters
+   read -p "Enter Node 1 IP: " N1
+   read -p "Enter Node 2 IP: " N2
+   read -p "Enter Node 3 IP: " N3
+fi
+
+# Modify Legends
+TIMESTAMP=$(date +"%F")
+DATE=$(date  --date="yesterday" +"%Y-%m-%d")
+TODAY=`date +"%d%b%Y_%I:%M:%S%p"`
+DB2_PWD="Smhnn@123"
+BKPADM_PWD="1w%<VO5Jx@L3"
+
+if [ "$PORT" = "22000" ]; then
+   # Prompt for additional parameters
+APP_USER="prdappusr"
+else
+APP_USER="uatappusr"
+fi
+
+
+if [ "$DBVER" = "50" ]; then
+   # Prompt for additional parameters
+MONGOSH="mongo"
+else
+MONGOSH="mongosh"
+fi
+
+
+         # Modify Legends
+         TIMESTAMP=$(date +"%F")
+         DATE=$(date  --date="yesterday" +"%Y-%m-%d")
+         TODAY=`date +"%d%b%Y_%I:%M:%S%p"`
+         PKG="Percona-Server-8.0.36-28-r47601f19-el9-x86_64-bundle.tar"
+         URL="https://downloads.percona.com/downloads/Percona-Server-8.0/Percona-Server-8.0.36-28/binary/redhat/9/x86_64/"
+         VER="8.0.36-28"
+
+# Modify Directories
+
+      DATADIR="$(df -h | awk '{print $6}' | grep -i dbdata)/mongo"
+      LOGDIR="$(df -h | awk '{print $6}' | grep -i dblog)/mongo"
+      ERRORDIR="$(df -h | awk '{print $6}' | grep -i err)/mongo"
+      TMPDIR="$(df -h | awk '{print $6}' | grep -i dbdata)/tmp_mongo"
+      BKPDIR="$(df -h | awk '{print $6}' | grep -i backup)"
+      AUDITDIR="$(df -h | awk '{print $6}' | grep -i err)/mongo/audit"
+      KEYDIR="$(df -h | awk '{print $6}' | grep -i err)/mongokey"
+      INSTALLDIR="${BKPDIR}/software/mongo/install"
+      TARDIR="${BKPDIR}/software/mongo/"
+      OUTPUTDIR="${BKPDIR}/Reports/mongo/"
+      OTHERDIR="${BKPDIR}/software/mongo/others"
+
+      # # Modify Directories
+      # DATADIR="/data/dbdata/mongo"
+      # LOGDIR="/data/dblog/mongo"
+      # ERRORDIR="/data/dberrlog/mongo"
+      # TMPDIR="/data/dbdata/mongo/tmp"
+      # AUDITDIR="/data/dberrlog/mongo/audit"
+      # INSTALLDIR="/data/backup/software/mongo/install"
+      # TARDIR="/data/backup/software/mongo"
+      # OUTPUTDIR="/data/backup/Reports"
+      # OTHERDIR="/data/backup/software/others"
+      # KEYDIR="/data/dberrlog/mongo/mongokeay"
+
+
+echo $DATADIR &&  echo $LOGDIR && echo $ERRORDIR && echo $TMPDIR && echo $BKPDIR
+echo $INSTALLDIR &&  echo $TARDIR && echo $OUTPUTDIR && echo $OTHERDIR
+
+echo "1w%<VO5Jx@L3" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret1.txt
+echo "Smhnn@123" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret2.txt
+
+
+
+# File path
+FILE="/etc/mongod.conf"
+
+# Check if the file exists
+if [ -f "$FILE" ];
+
+ then
+        # dbbackup the file with a timestamp
+        cp "$FILE" "/etc/mongod.conf_$(date +%Y_%m_%d.%H.%M.%S)"
+        echo "File dbbackup created."
+
+        service mongod stop
+        echo "DB stopped."
+
+        # yum remove percona* -y
+        yum remove $(rpm -qa | grep -i 'percona-server-mongodb') -y
+
+        echo "Old Binaries removed."
+
+        # Clean up directories
+        rm -rvf ${DATADIR}/*        
+        rm -rvf ${LOGDIR}/*         
+        rm -rvf ${ERRORDIR}/*       
+        echo "Clean up direcories - Done"
+
+ else
+        echo "File does not exist. Skipped."
+fi
+
+
+# Prepare directories
+mkdir -p ${OUTPUTDIR}
+mkdir -p ${DATADIR}
+mkdir -p ${KEYDIR}
+mkdir -p ${LOGDIR}
+mkdir -p ${ERRORDIR}
+mkdir -p ${ERRORDIR}/old_error_log/
+mkdir -p ${AUDITDIR}
+mkdir -p ${AUDITDIR}/old_logs_audit
+mkdir -p ${TARDIR}
+mkdir -p ${INSTALLDIR}
+mkdir -p ${OTHERDIR}
+
+
+echo "Directory created for ${DATADIR}"
+echo "Directory created for ${KEYDIR}"
+echo "Directory created for ${LOGDIR}"
+echo "Directory created for ${ERRORDIR}"
+echo "Directory created for ${AUDITDIR}"
+
+echo "Directories - Done"
+
+#Logging
+OUTPUTLOG=${OUTPUTDIR}/install.log
+ERRORLOG=${OUTPUTDIR}/error.log
+echo ${TODAY}   >${OUTPUTLOG}
+
+# Redirect stderr to the error log file
+   exec 2>"${ERRORLOG}"
+
+
+echo "OS Details" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+cat /etc/os-release >>${OUTPUTLOG}
+#echo "S3 Details" >>${OUTPUTLOG}
+#echo "----------" >>${OUTPUTLOG}
+#aws s3 ls >>${OUTPUTLOG}
+echo "Selinux" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+getenforce >>${OUTPUTLOG}
+echo "Swappiness" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+cat /proc/sys/vm/swappiness >>${OUTPUTLOG}
+echo "OpenFiles" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+ulimit -a |grep -i open >>${OUTPUTLOG}
+date >>${OUTPUTLOG}
+
+#Install DB - RPM BASED
+# Check if the .tar file is already present
+ #if [ -f "${TARDIR}/${PKG}" ]; then
+ #     echo "Percona tar file already exists. Skipping download, extraction, and cleanup steps."
+ # else
+      # Download Percona Server
+ #     wget ${PKG} -P ${TARDIR}/
+ #     tar -xvf ${TARDIR}/${PKG} -C ${INSTALLDIR}
+ #     rm -rvf ${INSTALLDIR}/percona*debug*
+ # fi
+
+#ENABLE REPO
+sudo yum install https://repo.percona.com/yum/percona-release-latest.noarch.rpm -y
+sudo percona-release enable psmdb-${DBVER} release
+
+#Install DB
+yum install percona-server-mongodb -y
+echo "Installation - Done"
+
+# Fix Permissions
+chown -R mongod:mongod ${DATADIR}
+chown -R mongod:mongod ${KEYDIR}
+chown -R mongod:mongod ${LOGDIR}
+chown -R mongod:mongod ${ERRORDIR}
+chown -R mongod:mongod ${AUDITDIR}
+
+echo "Permissions - Done"
+
+##Create a key file :
+echo "keyFile Creation"
+openssl rand -base64 741 > ${KEYDIR}/mongodb.key
+chmod 600 ${KEYDIR}/mongodb.key
+chown -R mongod:mongod ${KEYDIR}/mongodb.key
+
+##Create secondaryOK command:
+echo "rs.secondaryOk()" > /etc/mongorc.js
+chmod 644 /etc/mongorc.js
+
+echo ${APP_PWD}
+echo ${DB2_PWD}
+echo ${PORT}
+
+
+
+# Replace the desired configurations in /etc/mongod.conf
+sed -i "s|dbPath:.*|dbPath: ${DATADIR}|" /etc/mongod.conf
+sed -i "s|port:.*|port: ${PORT}|" /etc/mongod.conf
+sed -i "s|bindIp:.*|bindIp: 0.0.0.0|" /etc/mongod.conf
+# ErrorLog Path 
+sed -i "s#path: /var/log/mongo/mongod.log#path: ${ERRORDIR}/mongod.log#" /etc/mongod.conf
+
+service mongod restart
+systemctl enable mongod  >>${OUTPUTLOG}
+
+# Create MongoDB user 'db2dba'
+${MONGOSH} admin --port ${PORT} <<EOF
+db.getSiblingDB("admin").runCommand({
+  createUser: "db2dba",
+  pwd: "${DB2_PWD}",
+  roles: [
+    { role: "root", db: "admin" }, { role: '__system', db: 'admin' }
+  ]
+});
+EOF
+
+# Create MongoDB user 'bkpadmin'
+${MONGOSH} admin --port ${PORT} <<EOF
+db.getSiblingDB("admin").runCommand({
+  createUser: "bkpadmin",
+  pwd: "${BKPADM_PWD}",
+  roles: [
+    { role: "backup", db: "admin" }
+  ]
+});
+EOF
+
+
+# Create MongoDB user 'APP_USER'
+    ${MONGOSH} admin -u db2dba -p ${DB2_PWD} --port ${PORT} <<EOF
+    db.getSiblingDB("admin").runCommand({
+      createUser: "${APP_USER}",
+      pwd: "${APP_PWD}",
+      roles: [
+        { role: "read", db: "admin" },
+        { role: "readAnyDatabase", db: "admin" },
+        { role: "readWriteAnyDatabase", db: "admin" },
+        { role: "userAdminAnyDatabase", db: "admin" },
+        { role: "readWrite", db: "admin" }
+      ]
+    });
+EOF
+
+${MONGOSH} admin -u db2dba -p "${DB2_PWD}" --port ${PORT} <<EOF
+    db.getSiblingDB("admin").runCommand(
+        {
+            createUser: "dwhusr",
+            pwd: "A#gvr5dfsgngth@242T",
+            customData: {},
+            roles: [
+                { role: "readAnyDatabase", db: "admin" },
+                { role: "read", db: "admin" }            
+                ]
+        }
+    );
+EOF
+
+cp /etc/mongod.conf /etc/mongod.conf_`date +%Y_%m_%d.%H.%M.%S`
+# Replace the security section
+sed -i "s/#security:/security:\\n  authorization: \"enabled\"\\n  keyFile: ${KEYDIR//\//\\/}\/mongodb.key/" /etc/mongod.conf
+#OperationProfiling
+sed -i "s/#operationProfiling:/operationProfiling:\\n  mode: all\\n  slowOpThresholdMs: 100\\n  rateLimit: 1/" /etc/mongod.conf
+
+service mongod restart
+
+${MONGOSH} admin -u db2dba -p ${DB2_PWD} --port ${PORT} <<EOF
+db.getSiblingDB("admin").createRole({
+    role: "explainRole",
+    privileges: [{
+        resource: {
+            db: "",
+            collection: ""
+            },
+        actions: [
+            "listIndexes",
+            "listCollections",
+            "dbStats",
+            "dbHash",
+            "collStats",
+            "find"
+            ]
+        }],
+    roles:[]
+});
+
+db.getSiblingDB("admin").createRole({
+"role": "pbmAnyAction",
+"privileges": [{
+"resource": {
+"anyResource": true
+},
+"actions": [
+"anyAction"
+]
+}],
+"roles": []
+});
+
+db.runCommand({
+grantPrivilegesToRole: "explainRole",
+privileges: [{
+"resource": {
+"db": "admin",
+"collection": "system.profile"
+},
+"actions": [
+"indexStats",
+"dbStats",
+"collStats"
+]
+}]
+});
+
+
+
+db.getSiblingDB("admin").createUser({
+user: "pmm",
+pwd: "Open@123",
+roles: [
+{ role: "explainRole", db: "admin" },
+{ role: "clusterMonitor", db: "admin" },
+{ role: "read", db: "local" },
+{ "db" : "admin", "role" : "readWrite", "collection": "" },
+{ "db" : "admin", "role" : "backup" },
+{ "db" : "admin", "role" : "clusterMonitor" },
+{ "db" : "admin", "role" : "restore" },
+{ "db" : "admin", "role" : "pbmAnyAction" }
+]
+});
+
+db.getSiblingDB("admin").updateUser("pmm", {
+roles: [
+{ role: "explainRole", db: "admin" },
+{ role: "clusterMonitor", db: "admin" },
+{ role: "read", db: "local" },
+{ "db" : "admin", "role" : "readWrite", "collection": "" },
+{ "db" : "admin", "role" : "backup" },
+{ "db" : "admin", "role" : "clusterMonitor" },
+{ "db" : "admin", "role" : "restore" },
+{ "db" : "admin", "role" : "pbmAnyAction" }
+]
+});
+EOF
+
+if [ ${PORT} = 32000 ]; then
+    ${MONGOSH} admin -u db2dba -p "${DB2_PWD}" --port ${PORT} <<EOF
+    db.getSiblingDB("admin").runCommand(
+        {
+            createUser: "devusr",
+            pwd: "Devusr@123",
+            customData: {},
+            roles: [
+                { role: "readAnyDatabase", db: "admin" },
+                { role: "read", db: "admin" },
+                { role: "userAdminAnyDatabase", db: "admin" },
+                { role: "readWriteAnyDatabase", db: "admin" }
+            ]
+        }
+    );
+EOF
+
+${MONGOSH} admin -u db2dba -p "${DB2_PWD}" --port ${PORT} <<EOF
+    db.getSiblingDB("admin").runCommand(
+        {
+            createUser: "readusr",
+            pwd: "Readusr@123",
+            customData: {},
+            roles: [
+                { role: "readAnyDatabase", db: "admin" },
+                { role: "read", db: "admin" }            
+                ]
+        }
+    );
+EOF
+else
+    echo "Enabling audit for ${PORT}"
+    #sed -i "s/#auditLog:/auditLog:\n  destination: file\n  format: JSON\n  path: ${AUDITDIR//\//\\/}\/audit.log/" /etc/mongod.conf
+    sed -i "s/#auditLog:/auditLog:\n  destination: file\n  format: JSON\n  path: ${AUDITDIR//\//\\/}\/audit.log\nsetParameter: { auditAuthorizationSuccess: true }/" /etc/mongod.conf
+fi
+
+
+##ULIMIT SERVER
+
+cp -p /etc/security/limits.conf /etc/security/limits.conf_`date +%Y_%m_%d.%H.%M.%S`
+echo "" > /etc/security/limits.conf
+echo "*               hard    nofile  100000 " >> /etc/security/limits.conf
+echo "*               soft    nofile  100000 " >> /etc/security/limits.conf
+echo "mongod soft nofile 100000 " >> /etc/security/limits.conf
+echo "mongod hard nofile 100000 " >> /etc/security/limits.conf
+cat /etc/security/limits.conf |grep '^[[:blank:]]*[^[:blank:]#;]'  >>${OUTPUTLOG}
+
+systemctl daemon-reload >>${OUTPUTLOG}
+
+##ULIMIT MONGOD
+cp -p /usr/lib/systemd/system/mongod.service /usr/lib/systemd/system/mongod.service_`date +%Y_%m_%d.%H.%M.%S`
+sed -i 's/LimitNOFILE=64000/LimitNOFILE=infinity\nLimitMEMLOCK=infinity\nTimeoutSec=900/g' /usr/lib/systemd/system/mongod.service
+echo "Ulimit completed" >>${OUTPUTLOG}
+cat /usr/lib/systemd/system/mongod.service |grep '^[[:blank:]]*[^[:blank:]#;]' 
+
+systemctl daemon-reload >>${OUTPUTLOG}
+service mongod restart >>${OUTPUTLOG}
+
+if [ "$CLUSTER" = "YES" ]; then
+
+# Replace the replication section
+sed -i 's/#replication:/replication:\n  replSetName: mongo-cluster\n  /' /etc/mongod.conf
+
+vi ${KEYDIR}/mongodb.key
+
+service mongod restart
+
+echo "Is this the Primary Node? Type YES or NO: "
+   read -r choice
+   # Convert the input to uppercase for case-insensitive comparison
+   choice=$(echo "$choice" | tr '[:lower:]' '[:upper:]')
+
+         if [ "$choice" == "YES" ]; then
+            echo "This is Primary Node, Initializing Cluster"
+
+
+${MONGOSH} admin -u db2dba -p ${DB2_PWD} --port ${PORT} <<EOF
+    rs.initiate(
+    {
+        _id : "mongo-cluster",
+        members : [
+            {_id : 0, host : "${N1}:${PORT}"},
+            {_id : 1, host : "${N2}:${PORT}"},
+            {_id : 2, host : "${N3}:${PORT}"},
+        ]
+    }
+    );
+EOF
+
+${MONGOSH} admin -u db2dba -p ${DB2_PWD} --port ${PORT} <<EOF
+
+cfg = rs.conf()
+
+cfg.members[0].priority = 2
+cfg.members[1].priority = 0.5
+cfg.members[2].priority = 1
+
+rs.reconfig(cfg)
+
+EOF
+
+
+         else
+            echo "Not a Primary"
+         fi
+else 
+ echo "This is a Standalone"
+fi
+
+
+   echo "------------" 
+   echo "Arigato Gozaimasu..!! "  
+   echo "------------" 
+
+
