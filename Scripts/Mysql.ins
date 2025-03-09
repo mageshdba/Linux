@@ -1,0 +1,530 @@
+##Added uatappusr
+
+
+      #!/bin/bash
+      set -x
+      set -e  # Enable error handling
+      #
+      # Purpose:
+      #    To install MYSQL
+      #
+      # Parameters:
+      #    $1 : Port Number
+      #    $2 : Application Password
+      #    $3 : Cluster
+
+      # Check the parameters
+      SYNTAX_ERR='Syntax Error. Parameters are: <Port Number> <App password>  <Cluster>   '
+
+      if [ "$1" ]; then
+         PORT=$1
+      else
+         echo ${SYNTAX_ERR}
+         exit 1
+      fi
+
+      if [ "$2" ]; then
+         APP_PWD=$2
+      else
+         echo ${SYNTAX_ERR}
+         exit 1
+      fi
+
+      if [ "$3" ]; then
+         CLUSTER=$3
+      else
+         echo ${SYNTAX_ERR}
+         exit 1
+      fi
+
+      # if [ "$4" ]; then
+      #    DBVER=$4
+      # else
+      #    echo ${SYNTAX_ERR}
+      #    exit 1
+      # fi
+
+   if [ "$CLUSTER" = "YES" ]; then
+         # Prompt for additional parameters
+         read -p "Enter Node 1 IP: " N1
+         read -p "Enter Node 2 IP: " N2
+         read -p "Enter Node 3 IP: " N3
+         read -p "Enter Router 1 IP : " ROUT1
+         read -p "Enter Router 2 IP: " ROUT2
+         echo "Router 1 IP: $ROUT1"
+         echo "Router 2 IP: $ROUT2"
+   fi
+
+if [ "$PORT" = "2201" ]; then
+      # Prompt for additional parameters
+      APP_USER="prdappusr"
+else
+      APP_USER="uatappusr"
+fi
+
+
+         # Modify Legends
+         TIMESTAMP=$(date +"%F")
+         DATE=$(date  --date="yesterday" +"%Y-%m-%d")
+         TODAY=`date +"%d%b%Y_%I:%M:%S%p"`
+         PKG="Percona-Server-8.0.36-28-r47601f19-el9-x86_64-bundle.tar"
+         URL="https://downloads.percona.com/downloads/Percona-Server-8.0/Percona-Server-8.0.36-28/binary/redhat/9/x86_64/"
+         VER="8.0.36-28"
+
+         # Set new root password
+         ROOTPASS=rwzHs}+tCm,6
+         CLSPWD='Cl$@dmin@123'
+
+
+         DATADIR="$(df -h | awk '{print $6}' | grep -i data)/mysql"
+         LOGDIR="$(df -h | awk '{print $6}' | grep -i dblog)/mysql"
+         ERRORDIR="$(df -h | awk '{print $6}' | grep -i err)/mysql"
+         TMPDIR="$(df -h | awk '{print $6}' | grep -i data)/tmp_mysql"
+         BKPDIR="$(df -h | awk '{print $6}' | grep -i backup)"
+         AUDITDIR="$(df -h | awk '{print $6}' | grep -i err)/mysql/audit"
+         INSTALLDIR="${BKPDIR}/software/mysql/install"
+         TARDIR="${BKPDIR}/software/mysql"
+         OUTPUTDIR="${BKPDIR}/Reports/mysql"
+         OTHERDIR="${BKPDIR}/software/mysql/others"
+
+               #  # Modify Directories
+               #  DATADIR="/data/dbdata/mysql"
+               #  LOGDIR="/data/dblog/mysql"
+               #  ERRORDIR="/data/dberrorlog/mysql"
+               #  TMPDIR="/data/dbdata/mysql_tmp"
+               #  AUDITDIR="/data/dberrorlog/mysql/audit"
+               #  INSTALLDIR="/data/backup/software/mysql/install"
+               #  TARDIR="/data/backup/software/mysql"
+               #  OUTPUTDIR="/data/backup/Reports"
+               #  OTHERDIR="/data/backup/software/others"
+
+
+       echo $DATADIR &&  echo $LOGDIR && echo $ERRORDIR && echo $TMPDIR && echo $BKPDIR
+       echo $INSTALLDIR &&  echo $TARDIR && echo $OUTPUTDIR && echo $OTHERDIR
+
+echo "1w%<VO5Jx@L3" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret1.txt
+echo "Smhnn@123" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret2.txt
+
+
+
+      # File path
+      FILE="/etc/my.cnf"
+
+     # Check if the file exists
+      if [ -f "$FILE" ];
+
+       then
+              # Backup the file with a timestampls -lhrt 
+              
+              cp "$FILE" "/etc/my.cnf_$(date +%Y_%m_%d.%H.%M.%S)"
+              echo "File backup created."
+
+              service mysqld stop
+              echo "DB stopped."
+
+              # yum remove percona* -y
+              yum remove $(rpm -qa | grep -i 'percona.*8\.0') -y
+
+              echo "Old Binaries removed."
+
+              # Clean up directories
+              rm -rvf ${DATADIR}/*
+              rm -rvf ${LOGDIR}/*
+              rm -rvf ${ERRORDIR}/*
+              echo "Clean up direcories - Done"
+
+       else
+              echo "File does not exist. Skipped."
+      fi
+
+      # Prepare directories
+      mkdir -p ${OUTPUTDIR}
+      mkdir -p ${DATADIR}
+      mkdir -p ${TMPDIR}
+      mkdir -p ${LOGDIR}
+      mkdir -p ${ERRORDIR}
+      mkdir -p ${ERRORDIR}/old_error_log/
+      mkdir -p ${AUDITDIR}
+      mkdir -p ${AUDITDIR}/old_logs_audit/
+      mkdir -p ${TARDIR}
+      mkdir -p ${INSTALLDIR}
+      mkdir -p ${OTHERDIR}
+
+      echo "Directories - Done"
+
+      #Logging
+      OUTPUTLOG=${OUTPUTDIR}/install.log
+      ERRORLOG=${OUTPUTDIR}/error.log
+      echo ${TODAY}   >${OUTPUTLOG}
+
+      # Redirect stderr to the error log file
+         exec 2>"${ERRORLOG}"
+
+
+
+
+      echo "OS Details" >>${OUTPUTLOG}
+      echo "----------" >>${OUTPUTLOG}
+      cat /etc/os-release >>${OUTPUTLOG}
+      #echo "S3 Details" >>${OUTPUTLOG}
+      #echo "----------" >>${OUTPUTLOG}
+      #aws s3 ls >>${OUTPUTLOG}
+      echo "Selinux" >>${OUTPUTLOG}
+      echo "----------" >>${OUTPUTLOG}
+      getenforce >>${OUTPUTLOG}
+      echo "Swappiness" >>${OUTPUTLOG}
+      echo "----------" >>${OUTPUTLOG}
+      cat /proc/sys/vm/swappiness >>${OUTPUTLOG}
+      echo "OpenFiles" >>${OUTPUTLOG}
+      echo "----------" >>${OUTPUTLOG}
+      ulimit -a |grep -i open >>${OUTPUTLOG}
+      date >>${OUTPUTLOG}
+
+      echo "Install Other Binaries" >>${OUTPUTLOG}
+      echo "----------" >>${OUTPUTLOG}
+      #yum install innotop -y >>${OUTPUTLOG}
+      #yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el7.x86_64.rpm -y >>${OUTPUTLOG}
+      #yum install iotop -y >>${OUTPUTLOG}
+      #yum install iftop -y >>${OUTPUTLOG}
+      #yum install mlocate -y >>${OUTPUTLOG}
+      #yum install compat-openssl10 -y >>${OUTPUTLOG}
+      #yum install expect -y >>${OUTPUTLOG}
+      #yum install bc -y
+      #yum install  https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell-8.0.28-1.el8.x86_64.rpm -y
+
+
+      echo "Install Dependencies - Done"
+
+      #Install DB - RPM BASED
+      # Check if the .tar file is already present
+      # if [ -f "${TARDIR}/${PKG}" ]; then
+      #     echo "Percona tar file already exists. Skipping download, extraction, and cleanup steps."
+      # else
+      # Download Percona Server
+      #     wget ${PKG} -P ${TARDIR}/
+      #     tar -xvf ${TARDIR}/${PKG} -C ${INSTALLDIR}
+      #     rm -rvf ${INSTALLDIR}/percona*debug*
+      # fi
+
+      #Install DB - REPO BASED
+      sudo yum install https://repo.percona.com/yum/percona-release-latest.noarch.rpm -y
+      sudo percona-release setup ps-80 -y
+      sudo yum install percona-server-server -y
+      #yum install ${INSTALLDIR}/percona-* -y  >>${OUTPUTLOG}
+      echo "DB Installation - Done"
+
+     # yum install percona-mysql-shell.x86_64 -y >>${OUTPUTLOG}
+     # echo "Shell Installation - Done"
+
+     # sudo yum install pmm2-client -y >>${OUTPUTLOG}
+     # echo "PMM Client - Done"
+
+      # Configure MySQL
+      cp /etc/my.cnf /etc/my.cnf_$(date +%Y_%m_%d.%H.%M.%S)
+      echo "[mysqld]" > /etc/my.cnf
+      echo "socket=/var/lib/mysql/mysql.sock" >> /etc/my.cnf
+      echo "pid-file=/var/run/mysqld/mysqld.pid" >> /etc/my.cnf
+      echo "datadir=${DATADIR}" >> /etc/my.cnf
+      echo "log-error=${ERRORDIR}/mysqld.log" >> /etc/my.cnf
+      echo "log_bin=${LOGDIR}/mysql-bin.log" >> /etc/my.cnf
+      echo "relay-log=${LOGDIR}/mysql-relay-bin.log" >> /etc/my.cnf
+      echo "tmpdir=${TMPDIR}" >> /etc/my.cnf
+      echo "slave_load_tmpdir=${TMPDIR}" >> /etc/my.cnf
+      echo "Configs - Done"
+
+      # Fix Permissions
+      chown -R mysql:mysql ${DATADIR}
+      chown -R mysql:mysql ${TMPDIR}
+      chown -R mysql:mysql ${LOGDIR}
+      chown -R mysql:mysql ${ERRORDIR}
+      #chown -R mysql:mysql ${AUDITDIR}
+
+      echo "Ownerships - Done"
+
+      # Start MySQL
+      service mysqld start  >>${OUTPUTLOG}
+      systemctl enable mysqld  >>${OUTPUTLOG}
+
+      echo "Startup - Done"
+
+      # Get temporary password for root user
+      password=$(sudo grep 'temporary password' ${ERRORDIR}/mysqld.log | awk '{print $NF}')  >>${OUTPUTLOG}
+      echo $password
+
+      # Set new root password
+      echo ${ROOTPASS}
+
+      # Update root password using SQL command
+      mysql -uroot -p$password  --connect-expired-password  -e "set password='${ROOTPASS}'; FLUSH PRIVILEGES;"  >>${OUTPUTLOG}
+      echo "Password updated successfully."
+      echo ${ROOTPASS}
+
+      # Remove anonymous users
+      mysql -uroot -p${ROOTPASS}  -e "DELETE FROM mysql.user WHERE User='';"  >>${OUTPUTLOG}
+      echo "Anonymous users removed."
+
+      # Disallow root login remotely
+      mysql -uroot -p${ROOTPASS} -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"  >>${OUTPUTLOG}
+      echo "Remote root login disallowed."
+
+      # Remove test database and access to it
+      mysql -uroot -p${ROOTPASS} -e " DROP DATABASE IF EXISTS test;"  >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"  >>${OUTPUTLOG}
+      echo "Test database removed."
+
+      # Reload privilege tables
+      mysql -uroot -p${ROOTPASS} -e "FLUSH PRIVILEGES;"  >>${OUTPUTLOG}
+      echo "Privilege tables reloaded."
+
+      # Log in to MySQL using the new root password
+      mysql -uroot -p${ROOTPASS} -e "FLUSH PRIVILEGES;"  >>${OUTPUTLOG}
+
+      echo "Secure Install - Done"
+
+      mysql -uroot -p${ROOTPASS} -v -e " CREATE USER db2dba     IDENTIFIED BY 'Smhnn@123' ;    GRANT ALL PRIVILEGES ON *.* TO db2dba WITH GRANT OPTION;"  >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER bkpadmin   IDENTIFIED BY '1w%<VO5Jx@L3';  GRANT backup_ADMIN,SELECT, RELOAD, PROCESS, SUPER, REPLICATION CLIENT, SHOW VIEW ON *.* TO bkpadmin;"  >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER pmm        IDENTIFIED BY 'Open@123' ;     GRANT SELECT, CREATE TEMPORARY TABLES,PROCESS,RELOAD, REPLICATION CLIENT ON *.* TO pmm;"  >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER dwhusr IDENTIFIED BY 'A#gvr5dfsgngth@242T'; GRANT SELECT ON *.* TO dwhusr;" >>${OUTPUTLOG}
+      mysql -uroot -p$ROOTPASS -v -e "CREATE USER clusteradm IDENTIFIED BY '${CLSPWD}' ; GRANT SELECT, RELOAD, SHUTDOWN, PROCESS, FILE, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE USER, CREATE ROLE, DROP ROLE ON *.* TO clusteradm WITH GRANT OPTION;GRANT AUTHENTICATION_POLICY_ADMIN,CLONE_ADMIN,CONNECTION_ADMIN,GROUP_REPLICATION_ADMIN,PASSWORDLESS_USER_ADMIN,PERSIST_RO_VARIABLES_ADMIN,REPLICATION_APPLIER,REPLICATION_SLAVE_ADMIN,ROLE_ADMIN,SENSITIVE_VARIABLES_OBSERVER,SYSTEM_VARIABLES_ADMIN ON *.* TO clusteradm WITH GRANT OPTION;GRANT INSERT, UPDATE, DELETE ON mysql.* TO clusteradm WITH GRANT OPTION;GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata.* TO clusteradm WITH GRANT OPTION;GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata_bkp.* TO clusteradm WITH GRANT OPTION;GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata_previous.* TO clusteradm WITH GRANT OPTION;"  >>${OUTPUTLOG}
+
+      mysql -uroot -p${ROOTPASS} -v -e "FLUSH PRIVILEGES;" >>${OUTPUTLOG}
+
+   echo "Generica Users Created"
+
+
+      # Get total system memory in bytes
+      total_ram=$(free -m | awk '/^Mem:/{print $2*1024*1024}')
+      echo $total_ram
+
+      # Calculate 40% of available RAM IN BYTES
+      pool_size=$((total_ram/1024/1024/1024 * 40/100 ))
+      echo $pool_size
+
+      # Calculate 40% of total memory in GB
+      buff_pool=$((pool_size))G  >>${OUTPUTLOG}
+      echo $buff_pool
+
+      cat /etc/my.cnf
+
+      echo "" >> /etc/my.cnf
+      echo "port=${PORT}" >> /etc/my.cnf
+      echo "max_connections = 10000" >> /etc/my.cnf
+      echo "max_connect_errors=100000" >> /etc/my.cnf
+      echo "open_files_limit=1048576" >> /etc/my.cnf
+      echo "table_open_cache=2000" >> /etc/my.cnf
+      echo "wait_timeout=28800" >> /etc/my.cnf
+      echo "innodb_lock_wait_timeout=300" >> /etc/my.cnf
+      echo "innodb_open_files=2000" >> /etc/my.cnf
+      echo "innodb_monitor_enable=ALL" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "innodb_buffer_pool_size=$buff_pool" >> /etc/my.cnf
+      echo "innodb_log_file_size=512M" >> /etc/my.cnf
+      echo "innodb_log_buffer_size=512M" >> /etc/my.cnf
+      echo "slave_pending_jobs_size_max=134217728" >> /etc/my.cnf
+      echo "sort_buffer_size = 64M" >> /etc/my.cnf
+      echo "max_binlog_size=1G" >> /etc/my.cnf
+      echo "max_allowed_packet = 80M" >> /etc/my.cnf
+      echo "innodb_temp_data_file_path = ibtmp1:12M:autoextend:max:5G" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "sql_require_primary_key=ON" >> /etc/my.cnf
+      echo "sql_mode=''" >> /etc/my.cnf
+      echo "log_bin_trust_function_creators = 1" >> /etc/my.cnf
+      echo "#expire_logs_days=16" >> /etc/my.cnf
+      echo "binlog_expire_logs_seconds=1382400" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "innodb_doublewrite_pages=32" >> /etc/my.cnf
+      echo "innodb_flush_log_at_trx_commit=2" >> /etc/my.cnf
+      echo "innodb_flush_method=O_DIRECT" >> /etc/my.cnf
+      echo "innodb_autoinc_lock_mode=2" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "log_error_verbosity=3" >> /etc/my.cnf
+      echo "performance_schema_max_sql_text_length=5000" >> /etc/my.cnf
+      echo "federated" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "##PASSWORD" >> /etc/my.cnf
+      echo "default_password_lifetime=0" >> /etc/my.cnf
+      echo "password_history=0" >> /etc/my.cnf
+      echo "partial_revokes=ON" >> /etc/my.cnf
+      echo "" >> /etc/my.cnf
+      echo "transaction_isolation=READ-COMMITTED" >> /etc/my.cnf
+
+
+      cat /etc/my.cnf
+
+      ##ULIMIT SERVER
+
+      cp -p /etc/security/limits.conf /etc/security/limits.conf_`date +%Y_%m_%d.%H.%M.%S`
+
+      cat /etc/security/limits.conf |grep -i nofile
+
+      echo "" > /etc/security/limits.conf
+      echo "*               hard    nofile  100000 " >> /etc/security/limits.conf
+      echo "*               soft    nofile  100000 " >> /etc/security/limits.conf
+      echo "mysql soft nofile 100000 " >> /etc/security/limits.conf
+      echo "mysql hard nofile 100000 " >> /etc/security/limits.conf
+
+      cat /etc/security/limits.conf |grep '^[[:blank:]]*[^[:blank:]#;]'  >>${OUTPUTLOG}
+
+      ##ULIMIT MYSQL
+      cp -p /usr/lib/systemd/system/mysqld.service /usr/lib/systemd/system/mysqld.service_`date +%Y_%m_%d.%H.%M.%S`
+      sed -i 's/LimitNOFILE = 10000/LimitNOFILE=infinity\nLimitMEMLOCK=infinity/g' /usr/lib/systemd/system/mysqld.service
+      cat /usr/lib/systemd/system/mysqld.service |grep '^[[:blank:]]*[^[:blank:]#;]' >>${OUTPUTLOG}
+
+      systemctl daemon-reload >>${OUTPUTLOG}
+      service mysqld restart >>${OUTPUTLOG}
+
+
+
+      if [ "$PORT" = "3201" ];
+         then
+
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER 'devusr'@'%' IDENTIFIED BY 'Devusr@123';" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER 'readusr'@'%' IDENTIFIED BY 'Readusr@123';" >>${OUTPUTLOG}
+
+        else
+
+      #INSTALL AUDIT PLUGIN
+      mysql -uroot -p${ROOTPASS} -v -e "INSTALL PLUGIN audit_log SONAME 'audit_log.so';" >>${OUTPUTLOG}
+
+      echo "" >> /etc/my.cnf
+      echo "##AUDIT" >> /etc/my.cnf
+      echo "audit_log_file=${AUDITDIR}/audit.log" >> /etc/my.cnf
+      echo "audit_log_policy=ALL" >> /etc/my.cnf
+      echo "audit_log_format=NEW" >> /etc/my.cnf
+
+      #INSTALL VALIDATE PLUGIN
+      mysql -uroot -p${ROOTPASS} -v -e "INSTALL PLUGIN validate_password SONAME 'validate_password.so';" >>${OUTPUTLOG}
+
+      #INSTALL KEYRING
+      mysql -uroot -p${ROOTPASS} -v -e "INSTALL PLUGIN keyring_file SONAME 'keyring_file.so';" >>${OUTPUTLOG}
+
+      echo "" >> /etc/my.cnf
+      echo "##KEYRING" >> /etc/my.cnf
+      echo "early-plugin-load=keyring_file.so" >> /etc/my.cnf
+
+      echo "Plugins - Done"
+      fi
+
+      # Appuser creation
+      if [ "$CLUSTER" = "YES" ]; then
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER '$APP_USER'@'$ROUT1' IDENTIFIED BY '${APP_PWD}';" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER '$APP_USER'@'$ROUT2' IDENTIFIED BY '${APP_PWD}';"  >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER '$APP_USER'@'localhost' IDENTIFIED BY '${APP_PWD}' ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT ALL PRIVILEGES ON *.* TO '$APP_USER'@'$ROUT1';revoke shutdown,super on *.* from '$APP_USER'@'$ROUT1'" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT ALL PRIVILEGES ON *.* TO '$APP_USER'@'$ROUT2';revoke shutdown,super on *.* from '$APP_USER'@'$ROUT2'" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT ALL PRIVILEGES ON *.* TO '$APP_USER'@'localhost';revoke shutdown,super on *.* from '$APP_USER'@'localhost'" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "flush PRIVILEGES;" >>${OUTPUTLOG}
+
+      echo "App Users - Done"
+
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER 'clsuser'@'%' identified by '5rEWBqTZ@egc' ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT SELECT, RELOAD, SHUTDOWN, PROCESS, FILE, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE USER ON *.* TO 'clsuser'@'%'  ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT CLONE_ADMIN,CONNECTION_ADMIN,GROUP_REPLICATION_ADMIN,PERSIST_RO_VARIABLES_ADMIN,REPLICATION_APPLIER,REPLICATION_SLAVE_ADMIN,ROLE_ADMIN,SYSTEM_VARIABLES_ADMIN ON *.* TO 'clsuser'@'%';" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT INSERT, UPDATE, DELETE ON mysql.* TO 'clsuser'@'%' ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata.* TO 'clsuser'@'%' ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata_bkp.* TO 'clsuser'@'%' ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON mysql_innodb_cluster_metadata_previous.* TO 'clsuser'@'%';" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT GRANT OPTION ON *.* TO 'clsuser'@'%';" >>${OUTPUTLOG}
+
+
+
+      # Get the current hostname
+      hostname=$(hostname)
+
+      # Extract the last two characters from the hostname
+         # suffix=$(echo "$hostname" | sed 's/.*-db\([0-9]\{2\}\)\..*/\1/')
+
+         val=`echo $(hostname)|awk -F'.' '{print $1}'`;
+         suffix=${val:(-2)};
+         echo ${suffix}
+
+      # Set the weight based on the suffix
+      weight=0
+
+      if [[ $suffix == "01" ]]; then
+        weight=90
+      elif [[ $suffix == "02" ]]; then
+        weight=50
+      elif [[ $suffix == "03" ]]; then
+        weight=70
+      fi
+
+      echo "The weight for $hostname is $weight"
+
+      #INSTALL GR PLUGIN
+      mysql -uroot -p${ROOTPASS} -v -e "INSTALL PLUGIN group_replication SONAME 'group_replication.so';" >>${OUTPUTLOG}
+
+      # Set the group_replication_member_weight in my.cnf
+      echo "" >> /etc/my.cnf
+      echo "##GROUP REP" >> /etc/my.cnf
+      echo "plugin-load = group_replication.so" >> /etc/my.cnf
+      echo "group_replication_member_weight=${weight}" >> /etc/my.cnf
+      echo "group_replication_ip_allowlist='${N1},${N2},${N3}' " >> /etc/my.cnf
+      echo "group_replication_transaction_size_limit=2147483647" >> /etc/my.cnf
+
+      else
+      mysql -uroot -p${ROOTPASS} -v -e "CREATE USER '$APP_USER'@'%' IDENTIFIED BY '${APP_PWD}'   ;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "GRANT ALL PRIVILEGES ON *.* TO '$APP_USER'@'%' WITH GRANT OPTION;" >>${OUTPUTLOG}
+      mysql -uroot -p${ROOTPASS} -v -e "flush PRIVILEGES;" >>${OUTPUTLOG}
+      fi
+
+
+    #  service mysqld restart
+
+
+if [ "$CLUSTER" = "YES" ]; then
+   #PrepareMembers
+   echo -e "y\ny" | mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.configureInstance(\"clusteradm@localhost:${PORT}\");"
+   echo "Members Prepared"
+   # Prompt the user for input
+   echo "Adding Clusters"
+   echo "Is this the Primary Node? Type YES or NO: "
+   read -r choice
+   # Convert the input to uppercase for case-insensitive comparison
+   choice=$(echo "$choice" | tr '[:lower:]' '[:upper:]')
+         
+         if [ "$choice" == "YES" ]; then
+            echo "This is Primary Node, Creating Cluster"
+            mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.createCluster('innodb_cluster');"
+                     # Check the suffix of the current node's hostname (N1)
+                     if [[ $suffix == "01" ]]; then
+                         # suffix is 01, add nodes with suffix 02 and 03
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N2}:${PORT}');"
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N3}:${PORT}');"
+                     elif [[ $suffix == "02" ]]; then
+                         # suffix is 02, add nodes with suffix 01 and 03
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N1}:${PORT}');"
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N3}:${PORT}');"
+                     elif [[ $suffix == "03" ]]; then
+                         # suffix is 03, add nodes with suffix 01 and 02
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N1}:${PORT}');"
+                         mysqlsh --uri=clusteradm:@localhost:${PORT} -p${CLSPWD} -e "dba.getCluster().addInstance('clusteradm@${N2}:${PORT}');"
+                     else
+                         # Handle other cases
+                         echo "Invalid suffix."
+                     fi
+         
+         else
+            echo "Not a Primary"
+         fi
+
+else 
+echo "Skipped Cluster"
+fi
+
+
+      echo "------------" >>${OUTPUTLOG}
+      echo "Report"  >>${OUTPUTLOG}
+      echo "------------" >>${OUTPUTLOG}
+      echo "$1" >>${OUTPUTLOG}
+      echo "$2" >>${OUTPUTLOG}
+      echo "$3" >>${OUTPUTLOG}
+      echo "$N1" >>${OUTPUTLOG}
+      echo "$N2" >>${OUTPUTLOG}
+      echo "$N3" >>${OUTPUTLOG}
+      echo "$ROUT1" >>${OUTPUTLOG}
+      echo "$ROUT1" >>${OUTPUTLOG}
+      echo "${weight}" >>${OUTPUTLOG}
+      echo "------------" 
+      echo "Arigato Gozaimasu..!! " 
+      echo "------------" 
