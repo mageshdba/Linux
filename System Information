@@ -1,0 +1,174 @@
+### **System Information Analysis in RHEL**  
+
+Analyzing system information helps in **troubleshooting**, **performance monitoring**, and **capacity planning**. Here’s how you can interpret the system data and take action based on it.
+
+---
+
+## **1. OS and Kernel Analysis**  
+### **Command:**  
+```bash
+cat /etc/redhat-release
+uname -r
+hostnamectl
+```
+### **Analysis:**  
+- The OS version helps determine **package compatibility**.  
+  - Example: **RHEL 7 vs. RHEL 8 vs. RHEL 9** has different default package managers (`yum` vs. `dnf`).  
+- The **kernel version** impacts hardware compatibility and security.  
+  - Example: **Older kernels (e.g., 3.x) may lack security patches.**  
+  - Solution: **Upgrade using `dnf update kernel -y`** if needed.  
+- The **system architecture (`uname -m`)** determines software compatibility.  
+  - `x86_64` → 64-bit (good for most modern software).  
+  - `i686` → 32-bit (limited support).  
+
+---
+
+## **2. CPU and Memory Analysis**  
+### **Command:**  
+```bash
+lscpu
+free -h
+cat /proc/cpuinfo
+```
+### **Analysis:**  
+- **CPU Cores & Load:**  
+  - If `lscpu` shows **single-core** but high CPU usage (`top` or `htop` shows 100% usage), you may need a **multi-core system upgrade**.  
+- **Memory Usage:**  
+  - If `free -h` shows **low available RAM (<500MB)**, consider:  
+    - **Adding Swap Space** (`dd if=/dev/zero of=/swapfile bs=1G count=2 && mkswap /swapfile && swapon /swapfile`)  
+    - **Checking memory leaks** (`ps aux --sort=-%mem | head`)  
+
+---
+
+## **3. Disk and Filesystem Analysis**  
+### **Command:**  
+```bash
+df -h
+lsblk
+du -sh /var/log
+```
+### **Analysis:**  
+- **If `/` (root partition) is 100% full:**  
+  - Check large files:  
+    ```bash
+    du -ah / | sort -rh | head -10
+    ```
+  - Clean logs:  
+    ```bash
+    journalctl --vacuum-time=1d
+    ```
+- **If `lsblk` shows an unused partition:**  
+  - Mount it:  
+    ```bash
+    mount /dev/sdb1 /mnt
+    ```
+
+---
+
+## **4. Network Analysis**  
+### **Command:**  
+```bash
+ip a
+netstat -tulnp
+ss -tulnp
+ip route
+ping -c 4 google.com
+```
+### **Analysis:**  
+- **No IP Address Assigned (`ip a` shows no IP)?**  
+  - Restart networking:  
+    ```bash
+    systemctl restart NetworkManager
+    ```
+- **High Latency in `ping` results?**  
+  - Check network congestion using:  
+    ```bash
+    iftop -i eth0  # Install using `dnf install iftop`
+    ```
+- **Unknown Services Running (`netstat -tulnp` shows unexpected ports)?**  
+  - Check process details:  
+    ```bash
+    ps -p <PID>
+    ```
+
+---
+
+## **5. Process and Performance Analysis**  
+### **Command:**  
+```bash
+top
+htop
+ps aux --sort=-%cpu | head
+```
+### **Analysis:**  
+- **If `top` shows CPU usage >90%:**  
+  - Find the culprit:  
+    ```bash
+    ps aux --sort=-%cpu | head
+    ```
+  - Kill the process if needed:  
+    ```bash
+    kill -9 <PID>
+    ```
+- **If `htop` shows high memory usage:**  
+  - Check which process is consuming RAM:  
+    ```bash
+    smem -t | sort -nrk 2 | head -10
+    ```
+
+---
+
+## **6. Boot and Logs Analysis**  
+### **Command:**  
+```bash
+who -b
+journalctl -b -p 3  # Show boot errors
+systemctl --failed
+```
+### **Analysis:**  
+- **If `systemctl --failed` shows failed services:**  
+  - Restart them:  
+    ```bash
+    systemctl restart <service-name>
+    ```
+- **If `journalctl -b -p 3` shows critical errors:**  
+  - Investigate logs:  
+    ```bash
+    journalctl -xe
+    ```
+
+---
+
+## **7. User and Security Analysis**  
+### **Command:**  
+```bash
+whoami
+last
+cat /etc/passwd | awk -F: '$3 >= 1000 {print $1}'
+```
+### **Analysis:**  
+- **Check Unauthorized User Logins (`last`)**  
+  - If unknown users logged in, disable them:  
+    ```bash
+    usermod -L <username>
+    ```
+- **List users with root privileges (`sudo` group check):**  
+  ```bash
+  getent group wheel
+  ```
+
+---
+
+### **📌 Summary of Key Actions**  
+| Issue | Solution |
+|--------|-------------|
+| High CPU Usage | Find and kill heavy processes (`ps aux --sort=-%cpu`) |
+| Low RAM | Add swap space or restart memory-heavy processes |
+| Disk Full | Delete logs, move files to another partition |
+| No Internet | Restart `NetworkManager`, check routes (`ip route`) |
+| Service Not Running | Restart it (`systemctl restart <service>`) |
+| Security Issue | Disable unknown users, check login history |
+
+---
+
+### **Want a specific analysis?** 🚀
