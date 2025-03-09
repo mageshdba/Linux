@@ -1,0 +1,555 @@
+# **Process Management Commands & Advanced Techniques in RHEL**  
+
+Process management in Linux (RHEL) involves **monitoring, controlling, and optimizing running processes**. Below are key **commands and advanced techniques** for process handling, performance tuning, and troubleshooting.
+
+---
+
+## **1️⃣ Basic Process Management Commands**  
+
+### **📌 List Running Processes**  
+```bash
+ps aux
+```
+- Shows **all processes** running on the system.  
+- Columns: **USER, PID, %CPU, %MEM, COMMAND**.  
+
+🔹 **List processes for a specific user:**  
+```bash
+ps -u <username>
+```
+
+🔹 **List processes by name (e.g., MySQL):**  
+```bash
+ps aux | grep mysql
+```
+
+---
+
+### **📌 Real-Time Process Monitoring**  
+```bash
+top
+```
+- Displays **live** CPU/memory usage, process ID (PID), and priority.  
+
+🔹 **Advanced version of `top` with better UI:**  
+```bash
+htop
+```
+(Install with `dnf install -y htop` if not available)
+
+---
+
+### **📌 Find Processes by Name or Port**  
+```bash
+pgrep <process_name>
+```
+- Example:  
+  ```bash
+  pgrep nginx
+  ```
+
+🔹 **Find the process using a specific port:**  
+```bash
+netstat -tulnp | grep :80
+```
+or  
+```bash
+ss -tulnp | grep :80
+```
+
+---
+
+### **📌 Kill or Stop a Process**  
+
+🔹 **Kill a process by PID:**  
+```bash
+kill <PID>
+```
+
+🔹 **Force kill a process:**  
+```bash
+kill -9 <PID>
+```
+
+🔹 **Kill all processes by name:**  
+```bash
+pkill <process_name>
+```
+
+🔹 **Kill all instances of a specific user’s processes:**  
+```bash
+pkill -u <username>
+```
+
+🔹 **Kill multiple processes by name using `killall`:**  
+```bash
+killall <process_name>
+```
+
+---
+
+### **📌 Start/Stop/Restart Services Using `systemctl`**  
+```bash
+systemctl start <service>
+systemctl stop <service>
+systemctl restart <service>
+```
+Example: Restart MySQL  
+```bash
+systemctl restart mysqld
+```
+
+🔹 **Check service status:**  
+```bash
+systemctl status <service>
+```
+
+---
+
+## **2️⃣ Advanced Process Management Commands**  
+
+### **📌 Change Process Priority (`nice` & `renice`)**  
+
+🔹 **Start a process with a lower priority (nice value: -20 to 19)**  
+```bash
+nice -n 10 <command>
+```
+Example:  
+```bash
+nice -n 5 tar -czf backup.tar.gz /home/user
+```
+
+🔹 **Change priority of a running process (lower values = higher priority)**  
+```bash
+renice -n -5 -p <PID>
+```
+Example:  
+```bash
+renice -n -10 -p 1234
+```
+(Changes priority of process with PID `1234`)
+
+---
+
+### **📌 Check Process Resource Usage (`pidstat`)**  
+```bash
+pidstat -u 1
+```
+- Displays **CPU usage per process** in real time.  
+
+🔹 **Monitor memory usage per process:**  
+```bash
+pidstat -r 1
+```
+
+🔹 **Monitor disk I/O per process:**  
+```bash
+pidstat -d 1
+```
+
+---
+
+### **📌 Monitor Process I/O Usage (`iotop`)**  
+```bash
+iotop
+```
+(Install with `dnf install -y iotop` if not available)
+
+Shows **real-time disk usage by processes**.
+
+---
+
+### **📌 Find Which Process is Using High CPU or Memory**  
+
+🔹 **Sort processes by CPU usage:**  
+```bash
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -10
+```
+
+🔹 **Sort processes by memory usage:**  
+```bash
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -10
+```
+
+---
+
+### **📌 Check Process Threads (`ps` and `top`)**  
+```bash
+ps -T -p <PID>
+```
+🔹 **Monitor threads in real-time using `top`:**  
+```bash
+top -H -p <PID>
+```
+
+---
+
+### **📌 Limit CPU Usage for a Process (`cpulimit`)**  
+```bash
+cpulimit -p <PID> -l 20
+```
+(Install with `dnf install -y cpulimit` if not available)
+
+Limits **CPU usage of a process to 20%**.
+
+---
+
+### **📌 Run a Process in the Background (`nohup` & `screen`)**  
+```bash
+nohup <command> &
+```
+- Runs the process **in the background**, even after logout.  
+
+🔹 **Use `screen` for persistent sessions:**  
+```bash
+screen -S my_session
+```
+(To detach: Press `Ctrl+A`, then `D`. To reattach: `screen -r my_session`)
+
+---
+
+### **📌 Monitor System-Wide Load (`vmstat`)**  
+```bash
+vmstat 1
+```
+- Shows **CPU, memory, and process statistics** every second.
+
+---
+
+## **3️⃣ Automate Process Monitoring & Alerts**  
+
+### **📜 Script: `process_monitor.sh`**  
+```bash
+#!/bin/bash
+
+LOG_FILE="/var/log/process_monitor.log"
+EMAIL="admin@example.com"
+
+echo "==== Process Monitoring Started at $(date) ====" | tee -a $LOG_FILE
+
+# ✅ Check High CPU Usage Processes
+echo -e "\n🔹 High CPU Usage Processes:" | tee -a $LOG_FILE
+ps -eo pid,ppid,cmd,%cpu --sort=-%cpu | head -5 | tee -a $LOG_FILE
+
+# ✅ Check High Memory Usage Processes
+echo -e "\n🔹 High Memory Usage Processes:" | tee -a $LOG_FILE
+ps -eo pid,ppid,cmd,%mem --sort=-%mem | head -5 | tee -a $LOG_FILE
+
+# ✅ Check Zombie Processes
+echo -e "\n🔹 Zombie Processes:" | tee -a $LOG_FILE
+ZOMBIES=$(ps aux | awk '{ if ($8 == "Z") print $2 }')
+if [ -n "$ZOMBIES" ]; then
+    echo "⚠️ Zombie processes detected: $ZOMBIES" | tee -a $LOG_FILE
+else
+    echo "✅ No zombie processes found." | tee -a $LOG_FILE
+fi
+
+# ✅ Send Email Alert if Issues Detected
+if grep -q "⚠️" "$LOG_FILE"; then
+    mail -s "Process Monitoring Alert" $EMAIL < $LOG_FILE
+fi
+
+echo "==== Monitoring Completed at $(date) ====" | tee -a $LOG_FILE
+```
+
+### **🚀 Automate with a Cron Job**  
+```bash
+crontab -e
+```
+Add this line to run every **30 minutes**:  
+```bash
+*/30 * * * * /path/to/process_monitor.sh
+```
+
+---
+
+## **🚀 Summary: Key Process Management Commands**  
+
+| **Action** | **Command** |
+|------------|------------|
+| List running processes | `ps aux` |
+| Show real-time process info | `top` or `htop` |
+| Find process by name | `pgrep <name>` |
+| Kill process by PID | `kill <PID>` |
+| Kill all instances of a process | `killall <name>` |
+| Change process priority | `renice -n <value> -p <PID>` |
+| Monitor per-process resource usage | `pidstat` |
+| Monitor disk usage per process | `iotop` |
+| Check process threads | `top -H -p <PID>` |
+| Run process in background | `nohup <command> &` |
+| Monitor system load | `vmstat 1` |
+| Find high CPU processes | `ps -eo pid,ppid,cmd,%cpu --sort=-%cpu | head -10` |
+
+---
+
+## **🚀 Next Steps**  
+Would you like an **advanced script** that **automatically kills high CPU processes**, **sends alerts**, or **applies optimizations**? Let me know how you'd like to fine-tune process management! 🚀
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# **Process Management: Performance Tuning & Analysis in RHEL**  
+
+Efficient **process management** is crucial for **optimizing system performance** in Red Hat Enterprise Linux (RHEL). Below, we cover **performance tuning, analysis commands, and automation techniques** to **monitor, troubleshoot, and optimize processes**.
+
+---
+
+## **1️⃣ System Load & Performance Analysis**  
+
+### **📌 Check System Load (`uptime`, `w`)**  
+```bash
+uptime
+```
+- Displays **current load averages** (1, 5, and 15 minutes).  
+
+```bash
+w
+```
+- Shows logged-in users and their **CPU usage**.
+
+---
+
+### **📌 Monitor CPU Usage (`top`, `htop`)**  
+```bash
+top
+```
+- Displays **real-time CPU & memory usage**.  
+
+🔹 **Better UI with process tree:**  
+```bash
+htop
+```
+(Install with `dnf install -y htop`)
+
+---
+
+### **📌 Check Process-Specific CPU & Memory Usage (`pidstat`)**  
+```bash
+pidstat -u 1
+```
+- Updates every **1 second** with **CPU usage per process**.
+
+🔹 **Monitor memory usage per process:**  
+```bash
+pidstat -r 1
+```
+
+🔹 **Monitor disk I/O per process:**  
+```bash
+pidstat -d 1
+```
+
+---
+
+### **📌 Check High CPU Usage Processes (`ps` Sorting)**  
+```bash
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -10
+```
+- Lists **top 10 CPU-consuming processes**.
+
+🔹 **Sort by memory instead:**  
+```bash
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -10
+```
+
+---
+
+### **📌 Find the Process Causing High Load (`iostat`, `iotop`)**  
+```bash
+iostat -c 1 5
+```
+- Displays **CPU utilization** every second.
+
+🔹 **Monitor disk I/O usage per process:**  
+```bash
+iotop
+```
+(Install with `dnf install -y iotop`)
+
+---
+
+### **📌 Find the Process Using a Specific Port (`ss`, `netstat`)**  
+```bash
+ss -tulnp | grep :3306
+```
+- Checks which **process is using port 3306 (MySQL)**.
+
+```bash
+netstat -tulnp | grep :8080
+```
+- Finds **process using port 8080**.
+
+---
+
+### **📌 Check Process Threads (`top`, `ps`)**  
+```bash
+top -H -p <PID>
+```
+- Shows **threads of a specific process**.
+
+```bash
+ps -T -p <PID>
+```
+- Lists **all threads** for a given **process ID (PID)**.
+
+---
+
+### **📌 Identify Zombie & Stuck Processes**  
+```bash
+ps aux | awk '{ if ($8 == "Z") print $2 }'
+```
+- Finds **zombie processes**.
+
+🔹 **Kill zombie processes:**  
+```bash
+kill -9 <PID>
+```
+
+---
+
+## **2️⃣ Performance Tuning for Processes**  
+
+### **📌 Adjust Process Priority (`nice`, `renice`)**  
+
+🔹 **Start a process with a lower priority:**  
+```bash
+nice -n 10 <command>
+```
+(E.g., `nice -n 5 tar -czf backup.tar.gz /home/user`)
+
+🔹 **Change priority of a running process:**  
+```bash
+renice -n -5 -p <PID>
+```
+(E.g., `renice -n -10 -p 1234` changes process `1234` to higher priority)
+
+---
+
+### **📌 Limit CPU Usage (`cpulimit`)**  
+```bash
+cpulimit -p <PID> -l 20
+```
+(Install with `dnf install -y cpulimit`)
+
+- Limits **CPU usage of a process** to **20%**.
+
+---
+
+### **📌 Bind a Process to Specific CPU Cores (`taskset`)**  
+```bash
+taskset -c 0,2,4 <command>
+```
+- Runs a process **only on CPU cores 0, 2, and 4**.
+
+🔹 **Change CPU affinity of a running process:**  
+```bash
+taskset -cp 1,3 <PID>
+```
+
+---
+
+### **📌 Restrict Process Memory Usage (`ulimit`)**  
+🔹 **Set memory limit for a user:**  
+```bash
+ulimit -m 1048576
+```
+(Sets **1GB max memory** for user processes)
+
+🔹 **Check current limits:**  
+```bash
+ulimit -a
+```
+
+---
+
+### **📌 Control Resource Usage with `cgroups`**  
+
+Create a **CPU-limited cgroup**:  
+```bash
+cgcreate -g cpu:/limited_group
+```
+
+Assign a process to the group:  
+```bash
+cgclassify -g cpu:/limited_group <PID>
+```
+
+Set CPU limit (e.g., **50% of a core**):  
+```bash
+echo 50000 > /sys/fs/cgroup/cpu/limited_group/cpu.cfs_quota_us
+```
+
+---
+
+## **3️⃣ Automate Process Monitoring & Alerts**  
+
+### **📜 Script: `process_tuning.sh`**  
+```bash
+#!/bin/bash
+
+LOG_FILE="/var/log/process_tuning.log"
+EMAIL="admin@example.com"
+
+echo "==== Process Monitoring Started at $(date) ====" | tee -a $LOG_FILE
+
+# ✅ Check High CPU Usage Processes
+echo -e "\n🔹 High CPU Usage Processes:" | tee -a $LOG_FILE
+ps -eo pid,ppid,cmd,%cpu --sort=-%cpu | head -5 | tee -a $LOG_FILE
+
+# ✅ Check High Memory Usage Processes
+echo -e "\n🔹 High Memory Usage Processes:" | tee -a $LOG_FILE
+ps -eo pid,ppid,cmd,%mem --sort=-%mem | head -5 | tee -a $LOG_FILE
+
+# ✅ Check Zombie Processes
+echo -e "\n🔹 Zombie Processes:" | tee -a $LOG_FILE
+ZOMBIES=$(ps aux | awk '{ if ($8 == "Z") print $2 }')
+if [ -n "$ZOMBIES" ]; then
+    echo "⚠️ Zombie processes detected: $ZOMBIES" | tee -a $LOG_FILE
+else
+    echo "✅ No zombie processes found." | tee -a $LOG_FILE
+fi
+
+# ✅ Limit CPU-intensive processes (example: limit top CPU-consuming process to 50%)
+TOP_CPU_PID=$(ps -eo pid,%cpu --sort=-%cpu | awk 'NR==2 {print $1}')
+if [ -n "$TOP_CPU_PID" ]; then
+    echo "⚠️ Throttling high CPU process: $TOP_CPU_PID" | tee -a $LOG_FILE
+    cpulimit -p $TOP_CPU_PID -l 50 &
+fi
+
+# ✅ Send Email Alert if Issues Detected
+if grep -q "⚠️" "$LOG_FILE"; then
+    mail -s "Process Performance Alert" $EMAIL < $LOG_FILE
+fi
+
+echo "==== Monitoring Completed at $(date) ====" | tee -a $LOG_FILE
+```
+
+### **🚀 Automate with a Cron Job**  
+```bash
+crontab -e
+```
+Add this line to **run every 30 minutes**:  
+```bash
+*/30 * * * * /path/to/process_tuning.sh
+```
+
+---
+
+## **🚀 Summary: Key Performance Tuning Commands**  
+
+| **Action** | **Command** |
+|------------|------------|
+| List running processes | `ps aux` |
+| Show real-time process info | `top` or `htop` |
+| Find process by name | `pgrep <name>` |
+| Kill process by PID | `kill <PID>` |
+| Change process priority | `renice -n <value> -p <PID>` |
+| Monitor CPU usage per process | `pidstat -u 1` |
+| Monitor disk usage per process | `iotop` |
+| Limit CPU usage | `cpulimit -p <PID> -l 20` |
+| Bind process to specific CPUs | `taskset -c 0,2,4 <command>` |
+| Restrict process memory usage | `ulimit -m <value>` |
+| Automate monitoring | `crontab -e` |
+
+---
+
+## **🚀 Next Steps**  
+Would you like a **custom script** that **automatically tunes high-load processes** based on specific criteria? Let me know your exact requirements! 🚀
