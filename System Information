@@ -355,3 +355,263 @@ systemctl enable --now postgresql
 ---
 
 ### **🔍 Need help analyzing your system output? Let me know! 🚀**
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+
+# **System Information for Performance Tuning & Analysis in RHEL**  
+
+Performance tuning in **Red Hat Enterprise Linux (RHEL)** requires **system resource analysis, bottleneck identification, and optimization**. Below are key **commands to analyze CPU, memory, disk, network, and overall system performance**.  
+
+---
+
+# **1️⃣ Check Overall System Performance**  
+
+### **📌 View System Uptime & Load Average**  
+```bash
+uptime
+```
+✅ **Example Output:**  
+```
+10:05:26 up 5 days, 12:33,  2 users,  load average: 0.95, 1.10, 1.05
+```
+📌 **Analysis:**  
+- **Load average** (last **1, 5, 15 minutes**) should be **below CPU core count**.  
+- High load average **without high CPU usage** → Check **I/O bottlenecks**.  
+
+---
+
+### **📌 Get Detailed System Summary**  
+```bash
+top
+```
+📌 **Analysis:**  
+- Monitors **CPU, memory, and process activity**.  
+- Press **`Shift + P`** → Sort by CPU usage.  
+- Press **`Shift + M`** → Sort by memory usage.  
+
+📌 **Alternative (More Readable Output):**  
+```bash
+htop
+```
+*(Requires `htop` package installation.)*
+
+---
+
+### **📌 View Kernel & OS Details**  
+```bash
+uname -a
+cat /etc/redhat-release
+```
+📌 **Analysis:**  
+- Identifies **Linux kernel version** (important for tuning newer kernels).  
+- Ensures system is **running a supported RHEL version**.  
+
+---
+
+# **2️⃣ CPU Performance Analysis**  
+
+### **📌 View CPU Details & Core Count**  
+```bash
+lscpu
+```
+📌 **Analysis:**  
+- Shows **CPU model, cores, and architecture**.  
+- Helps check **NUMA (Non-Uniform Memory Access) support** for **multi-socket CPUs**.  
+
+---
+
+### **📌 Monitor Real-Time CPU Usage**  
+```bash
+mpstat -P ALL 2
+```
+📌 **Analysis:**  
+- Shows **CPU usage per core**.  
+- If **one core is maxed out**, the workload is **not multi-threaded**.  
+
+---
+
+### **📌 Identify CPU-Intensive Processes**  
+```bash
+ps -eo pid,ppid,cmd,%cpu --sort=-%cpu | head -10
+```
+📌 **Analysis:**  
+- Identifies **top 10 CPU-consuming processes**.  
+- Consider **limiting CPU usage** for high-impact processes using:  
+  ```bash
+  cpulimit -p <PID> -l 50
+  ```
+
+---
+
+# **3️⃣ Memory Performance Analysis**  
+
+### **📌 Check RAM & Swap Usage**  
+```bash
+free -m
+```
+✅ **Example Output:**  
+```
+              total   used   free   shared  buff/cache   available
+Mem:           7989   4521   1040   122     2428         3215
+Swap:          4096   512    3584
+```
+📌 **Analysis:**  
+- **High `swap` usage?** → System **lacks RAM** (consider adding more).  
+- **Low available memory?** → **Check memory-intensive processes**.  
+
+📌 **Find Memory-Heavy Processes:**  
+```bash
+ps -eo pid,ppid,cmd,%mem --sort=-%mem | head -10
+```
+
+---
+
+### **📌 Monitor Real-Time Memory Usage**  
+```bash
+vmstat 2 5
+```
+📌 **Analysis:**  
+- Shows **swapping activity, memory usage trends**.  
+- High **swap in (`si`) or swap out (`so`)** → Memory pressure **(low RAM)**.  
+
+---
+
+### **📌 Clear Cached Memory (Optimize RAM Usage)**  
+```bash
+sync; echo 3 > /proc/sys/vm/drop_caches
+```
+📌 **Analysis:**  
+- Frees up **cached memory**, improving **immediate performance**.  
+
+---
+
+# **4️⃣ Disk Performance Analysis**  
+
+### **📌 Check Disk Space Usage**  
+```bash
+df -h
+```
+📌 **Analysis:**  
+- Ensures **enough free space** (at least **15-20% free** for optimal performance).  
+- **If `/var` or `/tmp` is full**, delete **old logs and cache files**.  
+
+📌 **Find Large Files:**  
+```bash
+find / -type f -size +500M
+```
+
+---
+
+### **📌 Measure Disk I/O Performance (Benchmark)**  
+```bash
+dd if=/dev/zero of=/tmp/testfile bs=1M count=1024 oflag=direct
+```
+📌 **Analysis:**  
+- **Low speed (`<100MB/s`)**? Disk performance **needs optimization**.  
+
+📌 **Monitor Real-Time Disk Usage:**  
+```bash
+iostat -dx 2
+```
+- High `%util` (`>90%`) → Disk is overloaded.  
+- Consider using **SSD or RAID optimizations**.  
+
+---
+
+### **📌 Find Processes Using High Disk I/O**  
+```bash
+iotop
+```
+📌 **Analysis:**  
+- Shows **top I/O-consuming processes**.  
+- If a process is causing **high I/O wait**, consider **throttling disk usage**.  
+
+---
+
+# **5️⃣ Network Performance Analysis**  
+
+### **📌 Check Network Bandwidth Usage**  
+```bash
+nload
+```
+📌 **Analysis:**  
+- Shows **real-time incoming/outgoing bandwidth usage**.  
+- Helps identify **network congestion or bottlenecks**.  
+
+📌 **Alternative (without `nload`):**  
+```bash
+ip -s link show eth0
+```
+
+---
+
+### **📌 Measure Network Speed (Ping Test)**  
+```bash
+ping -c 5 google.com
+```
+📌 **Analysis:**  
+- High latency (`>100ms`) → **Network issues** or **ISP problems**.  
+
+📌 **Check Packet Loss & Latency:**  
+```bash
+mtr google.com
+```
+*(Requires `mtr` package.)*
+
+---
+
+### **📌 Identify Network-Heavy Processes**  
+```bash
+iftop -i eth0
+```
+📌 **Analysis:**  
+- Finds applications consuming **high network bandwidth**.  
+- Consider **rate-limiting** high-usage applications.  
+
+---
+
+# **6️⃣ System Logs & Performance Monitoring**  
+
+### **📌 Check System Logs for Errors**  
+```bash
+journalctl -p 3 -xe
+```
+📌 **Analysis:**  
+- Displays **critical system errors**.  
+- Helps **troubleshoot crashes, memory errors, and disk failures**.  
+
+---
+
+### **📌 Monitor System in Real-Time**  
+```bash
+dstat
+```
+📌 **Analysis:**  
+- Shows **CPU, memory, disk, network, and load averages** together.  
+
+📌 **Alternative:**  
+```bash
+sar -u 2 5
+```
+*(Shows CPU usage every 2 seconds for 5 times.)*
+
+---
+
+# **🚀 Summary: Key Performance Tuning Commands**  
+
+| **Action** | **Command** |
+|-----------|------------|
+| Check uptime & load | `uptime` |
+| View CPU details | `lscpu` |
+| Monitor CPU usage | `mpstat -P ALL 2` |
+| Check memory usage | `free -m` |
+| Find top memory processes | `ps -eo pid,ppid,cmd,%mem --sort=-%mem | head -10` |
+| Measure disk speed | `dd if=/dev/zero of=/tmp/testfile bs=1M count=1024 oflag=direct` |
+| Monitor disk I/O | `iostat -dx 2` |
+| Check network usage | `iftop -i eth0` |
+| Check system logs | `journalctl -p 3 -xe` |
+
+---
+
+### **🚀 Next Steps**  
+Would you like **a script to automate performance monitoring**? Let me know if you need help with **tuning recommendations, cron jobs, or advanced optimizations**! 💡
