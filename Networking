@@ -1,0 +1,280 @@
+# **Networking Commands: Advanced Commands, Performance Tuning & Analysis**  
+
+Efficient **network management and optimization** are crucial for high-performance Linux servers. Below, we cover **essential networking commands, troubleshooting tools, and performance tuning techniques** in **Red Hat Enterprise Linux (RHEL)**.  
+
+---
+
+## **1️⃣ Basic Networking Commands**  
+
+### **📌 Check Network Configuration (`ip`, `ifconfig`)**  
+```bash
+ip a
+```
+- Displays **all network interfaces and IP addresses**.  
+
+```bash
+ifconfig -a
+```
+(Requires `net-tools`: `dnf install -y net-tools`)  
+- Shows **interface details (IP, MAC, RX/TX stats, etc.)**.
+
+---
+
+### **📌 Check Routing Table (`ip route`, `route`)**  
+```bash
+ip route show
+```
+- Shows **routing table and default gateway**.
+
+```bash
+route -n
+```
+(Requires `net-tools`)
+
+---
+
+### **📌 Check DNS Configuration (`resolv.conf`, `systemd-resolve`)**  
+```bash
+cat /etc/resolv.conf
+```
+- Displays **DNS servers** in use.
+
+```bash
+systemd-resolve --status
+```
+- Shows **active DNS settings**.
+
+---
+
+### **📌 Test Network Connectivity (`ping`, `curl`, `wget`)**  
+```bash
+ping -c 5 google.com
+```
+- Sends **5 ICMP packets** to test reachability.
+
+```bash
+curl -I https://example.com
+```
+- Fetches **HTTP headers** from a website.
+
+```bash
+wget --spider https://example.com
+```
+- Checks **website availability** without downloading.
+
+---
+
+### **📌 Check Open Ports (`ss`, `netstat`)**  
+```bash
+ss -tulnp
+```
+- Lists **all open TCP/UDP ports** and associated processes.
+
+```bash
+netstat -tulnp
+```
+(Requires `net-tools`)
+
+---
+
+## **2️⃣ Advanced Networking Commands**  
+
+### **📌 Find Which Process Uses a Specific Port**  
+```bash
+ss -tulnp | grep :3306
+```
+- Finds the **process using port 3306 (MySQL)**.
+
+```bash
+lsof -i :443
+```
+- Finds the **process using HTTPS port (443)**.
+
+---
+
+### **📌 Capture Network Packets (`tcpdump`)**  
+```bash
+tcpdump -i eth0 port 80 -c 10
+```
+- Captures **10 HTTP packets** on `eth0`.
+
+```bash
+tcpdump -i any -n -vv
+```
+- Captures **all traffic with detailed output**.
+
+(Install with `dnf install -y tcpdump`)
+
+---
+
+### **📌 Analyze Network Traffic (`iftop`, `nload`)**  
+```bash
+iftop -i eth0
+```
+- Shows **real-time bandwidth usage**.
+
+```bash
+nload
+```
+(Install with `dnf install -y nload`)  
+- Graphical **network usage monitor**.
+
+---
+
+### **📌 Speed Test via Command Line**  
+```bash
+curl -s https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py | python3
+```
+- Runs a **speed test**.
+
+---
+
+### **📌 Test Network Latency (`mtr`)**  
+```bash
+mtr -rw google.com
+```
+- Shows **real-time latency** and **packet loss**.
+
+```bash
+traceroute google.com
+```
+(Install with `dnf install -y traceroute`)  
+- Displays the **route packets take to a destination**.
+
+---
+
+### **📌 Check Firewall Rules (`firewalld`, `iptables`)**  
+```bash
+firewall-cmd --list-all
+```
+- Shows **firewall rules**.
+
+```bash
+iptables -L -n -v
+```
+- Lists **all active firewall rules**.
+
+---
+
+## **3️⃣ Network Performance Tuning & Optimization**  
+
+### **📌 Increase TCP Buffer Size (High-Speed Networking)**  
+```bash
+sysctl -w net.core.rmem_max=8388608
+sysctl -w net.core.wmem_max=8388608
+sysctl -w net.ipv4.tcp_rmem="4096 87380 8388608"
+sysctl -w net.ipv4.tcp_wmem="4096 87380 8388608"
+sysctl -p
+```
+- Improves **network performance for high-speed connections**.
+
+---
+
+### **📌 Enable TCP Fast Open (Reduces Latency)**  
+```bash
+sysctl -w net.ipv4.tcp_fastopen=3
+```
+- **Speeds up TCP connections** by reducing handshake time.
+
+---
+
+### **📌 Disable TCP Slow Start (Prevents Performance Drops)**  
+```bash
+sysctl -w net.ipv4.tcp_slow_start_after_idle=0
+```
+- **Prevents speed drops** after idle periods.
+
+---
+
+### **📌 Optimize TCP Congestion Control**  
+```bash
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+```
+- Uses **Google’s BBR algorithm** for better congestion control.
+
+🔹 **Check available congestion control algorithms:**  
+```bash
+sysctl net.ipv4.tcp_available_congestion_control
+```
+
+---
+
+### **📌 Increase Connection Limits (High-Traffic Servers)**  
+```bash
+sysctl -w net.ipv4.ip_local_port_range="1024 65535"
+sysctl -w net.ipv4.tcp_tw_reuse=1
+```
+- Increases **available ports** and **reuse of TIME_WAIT connections**.
+
+---
+
+## **4️⃣ Automated Network Monitoring Script**  
+
+### **📜 Script: `network_monitor.sh`**  
+```bash
+#!/bin/bash
+
+LOG_FILE="/var/log/network_monitor.log"
+EMAIL="admin@example.com"
+
+echo "==== Network Monitoring Started at $(date) ====" | tee -a $LOG_FILE
+
+# ✅ Check Network Latency
+echo -e "\n🔹 Checking Network Latency:" | tee -a $LOG_FILE
+ping -c 5 8.8.8.8 | tee -a $LOG_FILE
+
+# ✅ Check Open Ports
+echo -e "\n🔹 Open Network Ports:" | tee -a $LOG_FILE
+ss -tulnp | tee -a $LOG_FILE
+
+# ✅ Check Bandwidth Usage
+echo -e "\n🔹 Top Network Processes by Usage:" | tee -a $LOG_FILE
+nethogs -t -c 5 | tee -a $LOG_FILE
+
+# ✅ Capture Packet Loss
+echo -e "\n🔹 Checking Packet Loss:" | tee -a $LOG_FILE
+mtr -rw 8.8.8.8 | tee -a $LOG_FILE
+
+# ✅ Send Alert if Packet Loss > 5%
+PACKET_LOSS=$(mtr -rw 8.8.8.8 | awk '/Loss%/ {print $NF}')
+if (( $(echo "$PACKET_LOSS > 5" | bc -l) )); then
+    echo "⚠️ High Packet Loss Detected: $PACKET_LOSS%" | tee -a $LOG_FILE
+    mail -s "Network Performance Alert" $EMAIL < $LOG_FILE
+fi
+
+echo "==== Monitoring Completed at $(date) ====" | tee -a $LOG_FILE
+```
+
+---
+
+### **🚀 Automate with Cron Job**  
+```bash
+crontab -e
+```
+Add this line to **run every 30 minutes**:  
+```bash
+*/30 * * * * /path/to/network_monitor.sh
+```
+
+---
+
+## **🚀 Summary: Key Performance Tuning Commands**  
+
+| **Action** | **Command** |
+|------------|------------|
+| Show network interfaces | `ip a` or `ifconfig` |
+| Check routing table | `ip route show` |
+| Test internet connectivity | `ping google.com` |
+| Monitor bandwidth usage | `iftop -i eth0` |
+| Check open ports | `ss -tulnp` |
+| Monitor real-time connections | `netstat -anp` |
+| Analyze network latency | `mtr google.com` |
+| Capture network packets | `tcpdump -i eth0 port 80` |
+| Optimize TCP settings | `sysctl -w net.ipv4.tcp_rmem="4096 87380 8388608"` |
+| Enable TCP Fast Open | `sysctl -w net.ipv4.tcp_fastopen=3` |
+| Automate monitoring | `crontab -e` |
+
+---
+
+## **🚀 Next Steps**  
+Would you like a **custom script** that **automatically tunes network settings** based on traffic load? Let me know your exact requirements! 🚀
