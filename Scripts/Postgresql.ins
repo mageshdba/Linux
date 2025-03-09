@@ -1,0 +1,516 @@
+##Added uatappusr
+##Added remoteNode to hba.conf and archivedir path persmission
+
+#!/bin/bash
+set -e  # Enablle error handling
+set -x 
+#
+# Purpose:
+#    To install PostgreSQL
+#
+# Parameters:
+#    $1 : Port Number
+#    $2 : Application password
+#    $3 : Cluster
+
+# Check the parameters
+SYNTAX_ERR='Syntax Error. Parameters are: <Port Number> <App password>  <Cluster> <Version>  '
+
+if [ "$1" ]; then
+   PORT=$1
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+if [ "$2" ]; then
+   APP_PWD=$2
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+if [ "$3" ]; then
+   CLUSTER=$3
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+
+if [ "$4" ]; then
+   DBVER=$4
+else
+   echo ${SYNTAX_ERR}
+   exit 1
+fi
+
+      if [ "$CLUSTER" = "YES" ]; then
+         # Prompt for additional parameters
+         read -p "Enter REMOTE NODE IP: " N2
+         read -p "Are you trying to configure PR or DR?: " Q1
+      fi
+
+               if [ "$DBVER" -eq 14 ]; then
+                   PG_CRON_VERSION="1.4.2-1"
+               fi
+            
+               if [ "$DBVER" -eq 16 ]; then
+                   PG_CRON_VERSION="1.6.2-1"
+               fi
+            
+               if [ "$DBVER" -eq 17 ]; then
+                   PG_CRON_VERSION="1.6.2-1"
+               fi
+
+               # Default case if no valid DBVER matches
+               if [ -z "$PG_CRON_VERSION" ]; then
+                   echo "Error: Unsupported DBVER '$DBVER'. Supported versions are 14, 16, and 17."
+                   exit 1
+               fi
+
+
+      if [ "$PORT" = "5665" ]; then
+            # Prompt for additional parameters
+            APP_USER="prdappusr"
+      else
+            APP_USER="uatappusr"
+      fi
+
+
+# Legends
+TIMESTAMP=$(date +"%F")
+DATE=$(date  --date="yesterday" +"%Y-%m-%d")
+TODAY=`date +"%d%b%Y_%I:%M:%S%p"`
+RHEL="rhel-$(rpm -E %{rhel})-x86_64"
+RHEL2="EL-$(rpm -E %{rhel})-x86_64"
+#PKG="ppg-16.1-el9-x86_64-bundle.tar"
+#URL="https://downloads.percona.com/downloads/postgresql-distribution-16/16.1/binary/redhat/9/x86_64/"
+PG_PWD=Smhnn@123
+RPL_PWD=Replusr@123
+
+
+# Set paths
+# OLDDATA="/var/lib/pgsql/${DBVER}/data"
+# DATADIR="/dbdata/pgsql"
+# TMPDIR="/dbdata/pgtmp"
+# LOGDIR="/dblog/pgsql"
+# ARCHIVEDIR="/dblog/pgsql/archive"
+# ERRORDIR="/dberrorlog/pgsql"
+# AUDITDIR="/dberrorlog/pgaudit"
+# INSTALLDIR="/backup/software/pgsql/install"
+# TARDIR="/backup/software/pgsql"
+# OUTPUTDIR="/backup/Reports"
+# OTHERDIR="/backup/software/pgsql/others"
+
+# Set paths
+   OLDDATA="/var/lib/pgsql/${DBVER}/data"
+   DATADIR="$(df -h | awk '{print $6}' | grep -i data)/pgsql"
+   LOGDIR="$(df -h | awk '{print $6}' | grep -i dblog)/pgsql"
+   ERRORDIR="$(df -h | awk '{print $6}' | grep -i err)/pgsql"
+   TMPDIR="$(df -h | awk '{print $6}' | grep -i data)/tmp_pgsql"
+   BKPDIR="$(df -h | awk '{print $6}' | grep -i backup)"
+   ARCHIVEDIR="$(df -h | awk '{print $6}' | grep -i dblog)/pgsql/archive"
+   AUDITDIR="$(df -h | awk '{print $6}' | grep -i err)/pgsql/audit"
+   INSTALLDIR="${BKPDIR}/software/pgsql/install"
+   TARDIR="${BKPDIR}/software/pgsql/"
+   OUTPUTDIR="${BKPDIR}/Reports/pgsql"
+   OTHERDIR="${BKPDIR}/software/pgsql/others"
+
+       echo $DATADIR &&  echo $LOGDIR && echo $ERRORDIR && echo $TMPDIR && echo $BKPDIR
+       echo $INSTALLDIR &&  echo $TARDIR && echo $OUTPUTDIR && echo $OTHERDIR
+
+echo "1w%<VO5Jx@L3" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret1.txt
+echo "Smhnn@123" | openssl enc -aes-256-cbc -md sha512 -a -salt -pass pass:Secret@123# > ${BKPDIR}/scripts/secret2.txt
+
+
+
+## File path
+FILE="/var/lib/pgsql/${DBVER}/data/postgresql.conf"
+
+# Check if the file exists
+if [ -f "$FILE" ];
+
+then
+       # Backup the file with a timestamp
+       cp "$FILE" "$FILE_$(date +%Y_%m_%d.%H.%M.%S)"
+       echo "File backup created."
+
+       service postgresql-${DBVER} stop
+       echo "DB stopped."
+
+       # yum remove percona-postgres* -y
+       yum remove $(rpm -qa | grep -i percona | grep -i postgres) -y
+
+       echo "Old Binaries removed."
+
+       # Clean up directories
+       rm -rvf ${OLDDATA}/*         
+       rm -rvf ${DATADIR}/*         
+       rm -rvf ${LOGDIR}/*          
+       rm -rvf ${ERRORDIR}/*       
+       echo "Clean up direcories - Done"
+
+else
+       echo "File does not exist. Skipped."
+fi
+
+# Prepare directories
+mkdir -p ${OUTPUTDIR}
+mkdir -p ${DATADIR}
+mkdir -p ${TMPDIR}
+mkdir -p ${LOGDIR}
+mkdir -p ${ERRORDIR}
+mkdir -p ${ERRORDIR}/old_error_log/
+mkdir -p ${AUDITDIR}
+mkdir -p ${AUDITDIR}/old_logs_audit/
+mkdir -p ${TARDIR}
+mkdir -p ${INSTALLDIR}
+mkdir -p ${OTHERDIR}
+mkdir -p ${ARCHIVEDIR}
+
+#Logging
+OUTPUTLOG=${OUTPUTDIR}/install.log
+ERRORLOG=${OUTPUTDIR}/error.log
+echo ${TODAY} >${OUTPUTLOG}
+
+# Redirect stderr to the error log file
+exec 2>"${ERRORLOG}"
+
+chmod -R 777 ${OUTPUTDIR}
+
+echo "OS Details" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+cat /etc/os-release >>${OUTPUTLOG}
+
+echo "S3 Details" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+#aws s3 ls >>${OUTPUTLOG}
+echo "Selinux" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+getenforce >>${OUTPUTLOG}
+echo "Swappiness" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+cat /proc/sys/vm/swappiness >>${OUTPUTLOG}
+echo "OpenFiles" >>${OUTPUTLOG}
+echo "----------" >>${OUTPUTLOG}
+ulimit -a |grep -i open >>${OUTPUTLOG}
+date >>${OUTPUTLOG}
+
+
+echo "Install Dependencies - Done"
+
+
+# # Check if the .tar file is already present
+# if [ -f "${TARDIR}/ppg-${DBVER}".*.tar ]; then
+#     echo "Percona tar file already exists. Skipping download, extraction, and cleanup steps."
+# else
+#     # Download Percona Server
+#     wget ${URL}/${PKG} -P ${TARDIR}/
+#    tar -xvf ${TARDIR}/ppg-${DBVER}.*.tar -C ${INSTALLDIR}
+#    rm -rvf ${INSTALLDIR}/percona*debug*
+#    mv ${INSTALLDIR}/*patroni* ${OTHERDIR}
+#    mv ${INSTALLDIR}/*pgbadger* ${OTHERDIR}
+#    mv ${INSTALLDIR}/*ha*.rpm ${OTHERDIR}
+# fi
+
+#Install DB
+#sudo dnf module disable postgresql llvm-toolset
+#sudo yum repolist
+
+#Configure the repository
+sudo yum install https://repo.percona.com/yum/percona-release-latest.noarch.rpm -y
+
+#Enable the repository
+sudo percona-release setup ppg-${DBVER} -y
+
+echo "DB Installation - Done"
+sudo yum install percona-ppg-server${DBVER} -y
+
+echo "Install Extensions" >>${OUTPUTLOG}
+
+##EXTENSIONS
+#PG_CRON
+#yum install pg_cron_${DBVER} -y
+yum install  https://download.postgresql.org/pub/repos/yum/${DBVER}/redhat/rhel-$(rpm -E %{rhel})-x86_64/pg_cron_${DBVER}-${PG_CRON_VERSION}PGDG.rhel$(rpm -E %{rhel}).x86_64.rpm -y
+
+
+
+#PGSTATMONITOR
+yum install percona-pg-stat-monitor${DBVER} -y
+
+#TIMESCALE
+tee /etc/yum.repos.d/timescale_timescaledb.repo <<EOL
+[timescale_timescaledb]
+name=timescale_timescaledb
+baseurl=https://packagecloud.io/timescale/timescaledb/el/$(rpm -E %{rhel})/\$basearch
+repo_gpgcheck=1
+gpgcheck=0
+enabled=1
+gpgkey=https://packagecloud.io/timescale/timescaledb/gpgkey
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+EOL
+#yum install timescaledb-2-postgresql-${DBVER} -y
+
+#TIMESCALE TOOLKIT
+#yum install timescaledb-toolkit-postgresql-${DBVER} -y
+echo "Install Extensions - Done" >>${OUTPUTLOG}
+
+#PGSTATMONITOR
+yum install percona-pg-stat-monitor${DBVER} -y
+
+#INIT DB
+sudo /usr/pgsql-${DBVER}/bin/postgresql-${DBVER}-setup initdb
+
+systemctl enable postgresql-${DBVER}
+systemctl start postgresql-${DBVER}
+
+cd ${OUTPUTDIR}
+
+sudo -i -u postgres psql -c "create user db2dba  with superuser createdb password '${PG_PWD}'; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to db2dba;"
+sudo -i -u postgres psql -c "CREATE USER replusr WITH replication PASSWORD '${RPL_PWD}';"
+sudo -i -u postgres psql -c "CREATE USER ${APP_USER} WITH createdb PASSWORD '${APP_PWD}'; grant pg_read_all_data, pg_write_all_data to ${APP_USER};"
+sudo -i -u postgres psql -c "CREATE USER dwhusr WITH createdb PASSWORD 'A#gvr5dfsgngth@242T';"
+sudo -i -u postgres psql -c "create user bkpadmin SUPERUSER password '1w%<VO5Jx@L3' ; ALTER USER bkpadmin set default_transaction_read_only = on; comment on role bkpadmin is 'Used only for DB backup ; default_transaction_read_only is enabled';"
+sudo -i -u postgres psql -c "create user pmmusr SUPERUSER password 'Open@123' ; grant pg_read_all_stats,grant pg_read_all_data to pmmusr;"
+sudo -i -u postgres psql -c "create user m2p331 with  superuser encrypted password 'Hari@123' ;   grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p331 ; "
+sudo -i -u postgres psql -c "create user m2p237 with  superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p237 ;"
+sudo -i -u postgres psql -c "create user m2p274 with  superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p274 ;"
+sudo -i -u postgres psql -c "create user m2p471 with  superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p471 ;"
+sudo -i -u postgres psql -c "create user m2p499 with  superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p499 ;"
+sudo -i -u postgres psql -c "create user m2p1043 with superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p1043 ;"
+sudo -i -u postgres psql -c "create user m2p1049 with superuser encrypted password 'Open@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to m2p1049 ;"
+
+sudo -i -u postgres psql -c "select * from pg_create_physical_replication_slot('slot_1');"
+
+#RSYNC
+service postgresql-${DBVER} stop
+sudo rsync -avhz ${OLDDATA}/ ${DATADIR}/
+
+chown -R postgres:postgres ${DATADIR}
+chown -R postgres:postgres ${TMPDIR}
+chown -R postgres:postgres ${LOGDIR}
+chown -R postgres:postgres ${ERRORDIR}
+chown -R postgres:postgres ${AUDITDIR}
+chown -R postgres:postgres ${ARCHIVEDIR}
+echo "Directories - Done"
+
+
+#CONF BACKUP
+cp -p /var/lib/pgsql/${DBVER}/data/postgresql.conf   /var/lib/pgsql/${DBVER}/data/postgresql.conf_`date +%Y_%m_%d.%H.%M.%S`
+cp -p /var/lib/pgsql/${DBVER}/data/pg_hba.conf /var/lib/pgsql/${DBVER}/data/pg_hba.conf_`date +%Y_%m_%d.%H.%M.%S`
+
+cat /var/lib/pgsql/${DBVER}/data/postgresql.conf |grep '^[[:blank:]]*[^[:blank:]#;]' >  /var/lib/pgsql/${DBVER}/data/postgresql.conf_scripted
+cat /var/lib/pgsql/${DBVER}/data/pg_hba.conf |grep '^[[:blank:]]*[^[:blank:]#;]' >  /var/lib/pgsql/${DBVER}/data/pg_hba.conf_scripted
+echo "Config files backed up - Done"
+
+#CONF CHANGE
+
+rm -rf /var/lib/pgsql/${DBVER}/data/postgresql.conf
+cat /dev/null > /var/lib/pgsql/${DBVER}/data/postgresql.conf
+chown postgres:postgres /var/lib/pgsql/${DBVER}/data/postgresql.conf
+
+#Max_connections
+max_connections="10000"
+# Calculate 15% of available RAM
+total_ram=$(free -m | awk '/^Mem:/{print $2}')
+
+# work_mem 0.05% of total RAM
+work_mem=$((total_ram * 5 / 10000))MB && echo $work_mem
+# maintenance_work_mem 8% of total RAM
+maintenance_work_mem=$((total_ram * 8 / 100))MB && echo $maintenance_work_mem
+# shared_buffers 15% of total RAM
+shared_buffers=$((total_ram * 15 / 100))MB && echo $shared_buffers
+# effective_cache_size 25% of RAM
+effective_cache_size=$((total_ram * 25 / 100))MB && echo $effective_cache_size
+
+# 1.1 Postgres.conf
+echo "data_directory = '${DATADIR}'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_directory = '${ERRORDIR}'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "listen_addresses = '*'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "port = ${PORT}" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_connections = ${max_connections}" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "superuser_reserved_connections = 5" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "shared_buffers = ${shared_buffers}" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "work_mem = ${work_mem}" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "maintenance_work_mem = ${maintenance_work_mem}" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "effective_cache_size=$((total_ram * 40 / 100))" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "effective_io_concurrency=200" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_worker_processes = 8" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_parallel_workers_per_gather = 4" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_parallel_maintenance_workers = 4" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_parallel_workers = 8" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "checkpoint_timeout = 1800" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo " " >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_wal_size = 3GB" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "min_wal_size = 2GB" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "max_wal_senders = 10" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo " " >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_connections = 'on'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_destination = 'csvlog'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_disconnections = 'on'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_filename = 'postgresql-%a.log'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,host=%h'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_min_messages = warning" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_rotation_age = 1d" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_rotation_size = 0" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_statement = 'none'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_timezone = 'Asia/Kolkata'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_truncate_on_rotation = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "log_lock_waits = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "logging_collector = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo " " >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "shared_preload_libraries = 'pg_cron,pgcrypto,pg_stat_statements,pgaudit,dblink,pg_stat_monitor' " >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "wal_level = hot_standby" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "hot_standby = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "archive_mode = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "archive_command = 'test ! -f ${ARCHIVEDIR}/%f && cp %p ${ARCHIVEDIR}/%f'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "primary_conninfo = 'user=replusr port=${PORT} host=${N2} application_name=${N2}.replusr'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "primary_slot_name = 'slot_1'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "pgaudit.log_directory='${AUDITDIR}'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "pgaudit.log = 'ddl, role, read, write'" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "pgaudit.log_catalog = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "pgaudit.log_level = warning" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "track_activity_query_size = 10000" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "pg_stat_statements.track = all" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "track_io_timing = on" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+
+
+echo "Main Config changes- Done"
+
+# 2.1 Hba.conf
+
+cat /dev/null > /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+
+echo "local   all             all                                     peer"               >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+echo "host    all             all            0.0.0.0/0            scram-sha-256"          >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+echo "host    replication      bkpadmin       0.0.0.0/0            scram-sha-256"          >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+echo "host    replication      replusr       0.0.0.0/0            scram-sha-256"          >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+echo "host    all             pmmusr        172.186.13.62/32        md5" >> $PGDATA/pg_hba.conf
+
+cat /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+
+echo "HBA Config changes- Done"
+
+chown -R postgres:postgres ${DATADIR}
+chown -R postgres:postgres ${TMPDIR}
+chown -R postgres:postgres ${LOGDIR}
+chown -R postgres:postgres ${ERRORDIR}
+chown -R postgres:postgres ${AUDITDIR}
+chown -R postgres:postgres ${ARCHIVEDIR}
+echo "Directories - Done"
+
+service postgresql-${DBVER} restart
+
+
+#CREATE EXTENSION
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "CREATE EXTENSION dblink;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pgcrypto;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pg_stat_statements;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pg_cron;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension timescaledb;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "CREATE EXTENSION timescaledb_toolkit;" postgres
+
+echo "Percona Extensions Done"
+
+##PGAUDIT 
+
+rpm -e percona-pgaudit${DBVER} --nodeps
+
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/${RHEL2}/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf -qy module disable postgresql
+
+yum install pgaudit${DBVER}* -y
+yum install pgauditlogtofile_${DBVER}* -y
+
+
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pgaudit;" postgres
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pgauditlogtofile;" postgres
+
+service postgresql-${DBVER} restart
+
+echo "Audit Extension Done"
+
+PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create extension pg_stat_monitor;" postgres
+echo "pg_stat_monitor.pgsm_query_max_len=10000" >> /var/lib/pgsql/${DBVER}/data/postgresql.conf
+echo "Stat Monitor Extensions Done"
+
+if [ "$PORT" = "4554" ];
+   then
+   # Prompt for additional parameters
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create user devusr with encrypted password 'Devusr@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to devusr ;" postgres
+
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "create user readusr with encrypted password 'Readusr@123' ; grant pg_read_all_data,pg_write_all_data, pg_read_all_stats to readusr ;" postgres
+
+ PGPASSWORD=$PG_PWD  psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "drop extension pg_cron;;" postgres
+
+fi
+
+##ULIMIT SERVER
+
+cp -p /etc/security/limits.conf /etc/security/limits.conf_`date +%Y_%m_%d.%H.%M.%S`
+echo "" > /etc/security/limits.conf
+echo "*               hard    nofile  100000 " >> /etc/security/limits.conf
+echo "*               soft    nofile  100000 " >> /etc/security/limits.conf
+echo "postgres soft nofile 100000 " >> /etc/security/limits.conf
+echo "postgres hard nofile 100000 " >> /etc/security/limits.conf
+cat /etc/security/limits.conf |grep '^[[:blank:]]*[^[:blank:]#;]'  >>${OUTPUTLOG}
+
+
+##ULIMIT POSTGRES
+cp -p /usr/lib/systemd/system/postgresql-${DBVER}.service /usr/lib/systemd/system/postgresql-${DBVER}.service_`date +%Y_%m_%d.%H.%M.%S`
+echo "LimitNOFILE=infinity" >> /usr/lib/systemd/system/postgresql-${DBVER}.service
+echo "LimitMEMLOCK=infinity" >> /usr/lib/systemd/system/postgresql-${DBVER}.service
+cat /usr/lib/systemd/system/postgresql-${DBVER}.service |grep '^[[:blank:]]*[^[:blank:]#;]' >>${OUTPUTLOG}
+
+systemctl daemon-reload >>${OUTPUTLOG}
+
+service postgresql-${DBVER} restart >>${OUTPUTLOG}
+systemctl enable postgresql-${DBVER}  >>${OUTPUTLOG}
+
+if [ "$CLUSTER" = "YES" ];
+  then
+         if [ "$Q1" = "DR" ];
+           then
+               #Stop postgres AND clear data
+                service postgresql-${DBVER} stop
+               #Config HBA with Remote Node
+               echo "host    replication     replusr         ${N2}/32            scram-sha-256"      >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+               #Remove DataDir
+                rm -rvf ${DATADIR}/*
+               #Run the backup utility
+                echo "Basebackup started"
+                PGPASSWORD=$RPL_PWD pg_basebackup -D ${DATADIR} --format=p --write-recovery-conf --checkpoint=fast --label=mffb --progress --host=${N2} --port=${PORT} --username=replusr
+                echo "Basebackup completed"
+               #Start postgres
+                chown -R postgres:postgres ${DATADIR}
+                service postgresql-${DBVER} start
+                echo "Slot creation - started"
+                PGPASSWORD=$PG_PWD psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "select * from pg_create_physical_replication_slot('slot_1');" postgres
+                PGPASSWORD=$PG_PWD psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "select slot_name, active, slot_type, wal_status from pg_replication_slots where slot_name='slot_1' and active='t';select status,sender_host from pg_stat_wal_receiver;" postgres
+                echo "Slot creation - completed"
+                echo "$Q1 Completed"
+            else
+            #Config HBA with Remote Node
+               echo "host    replication     replusr             ${N2}/32            scram-sha-256"      >> /var/lib/pgsql/${DBVER}/data/pg_hba.conf
+               echo "Primary Completed"
+            PGPASSWORD=$PG_PWD psql -U db2dba -h 127.0.0.1 --port ${PORT} -c "select pg_reload_conf();" postgres
+  
+         fi
+else
+               echo "Standalone Completed"
+       fi
+
+chmod -R 777 ${OUTPUTDIR}
+
+
+   echo "------------" 
+   echo "Arigato Gozaimasu..!! "  
+   echo "------------" 
