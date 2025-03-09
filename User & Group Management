@@ -1,1 +1,355 @@
+## **User & Group Management Commands in RHEL (Linux)**  
 
+In **Red Hat Enterprise Linux (RHEL)**, user and group management is crucial for security and access control. Below are essential **commands** to manage users, groups, passwords, and permissions.
+
+---
+
+## **1. Check Current Logged-in User**  
+```bash
+whoami
+```
+✅ **Example Output:**  
+```
+root
+```
+📌 **Action:** If you need admin privileges, use `sudo`.
+
+---
+
+## **2. List All Users in the System**  
+```bash
+cat /etc/passwd
+```
+*(Shows a list of users and their home directories.)*
+
+📌 **To display only usernames:**  
+```bash
+cut -d: -f1 /etc/passwd
+```
+
+---
+
+## **3. Create a New User**  
+```bash
+useradd username
+```
+📌 **Example:**  
+```bash
+useradd balaji
+```
+*(Creates a user named `balaji`.)*
+
+### **Set Password for the User**
+```bash
+passwd balaji
+```
+*(Prompts to enter a new password.)*
+
+---
+
+## **4. Create a User with a Home Directory & Default Shell**
+```bash
+useradd -m -s /bin/bash username
+```
+*(Creates a user with a home directory and assigns Bash shell.)*
+
+---
+
+## **5. Delete a User (With or Without Home Directory)**  
+```bash
+userdel username
+```
+📌 **Example:**  
+```bash
+userdel balaji
+```
+*(Deletes the user but keeps the home directory.)*
+
+To **delete user along with home directory**:  
+```bash
+userdel -r balaji
+```
+
+---
+
+## **6. List All Groups in the System**  
+```bash
+cat /etc/group
+```
+📌 **To display only group names:**  
+```bash
+cut -d: -f1 /etc/group
+```
+
+---
+
+## **7. Create a New Group**  
+```bash
+groupadd mygroup
+```
+*(Creates a new group called `mygroup`.)*
+
+---
+
+## **8. Add a User to a Group**  
+```bash
+usermod -aG mygroup balaji
+```
+*(Adds `balaji` to `mygroup` without removing existing groups.)*
+
+📌 **To verify group membership:**  
+```bash
+groups balaji
+```
+✅ **Example Output:**  
+```
+balaji : mygroup wheel
+```
+
+---
+
+## **9. Change a User's Primary Group**  
+```bash
+usermod -g mygroup balaji
+```
+*(Sets `mygroup` as the primary group for `balaji`.)*
+
+---
+
+## **10. Remove a User from a Group**  
+```bash
+gpasswd -d balaji mygroup
+```
+
+---
+
+## **11. Delete a Group**  
+```bash
+groupdel mygroup
+```
+📌 **Action:** Ensure no users are part of the group before deleting.
+
+---
+
+## **12. Lock & Unlock a User Account**  
+To **lock** a user (prevent login):  
+```bash
+usermod -L balaji
+```
+To **unlock** the user:  
+```bash
+usermod -U balaji
+```
+
+---
+
+## **13. Check User Login History**  
+```bash
+last
+```
+*(Displays the login history of users.)*
+
+---
+
+## **14. Check User & Group ID (UID & GID)**  
+```bash
+id balaji
+```
+✅ **Example Output:**  
+```
+uid=1001(balaji) gid=1001(mygroup) groups=1001(mygroup),10(wheel)
+```
+📌 **UID**: User ID, **GID**: Group ID.
+
+---
+
+## **15. Switch to Another User**  
+```bash
+su - balaji
+```
+*(Switches to user `balaji`.)*
+
+---
+
+### **📌 Summary of Commands**
+| **Action** | **Command** |
+|-----------|------------|
+| Create User | `useradd username` |
+| Set User Password | `passwd username` |
+| Create Group | `groupadd groupname` |
+| Add User to Group | `usermod -aG groupname username` |
+| Delete User | `userdel username` |
+| Delete Group | `groupdel groupname` |
+| Lock User Account | `usermod -L username` |
+| Unlock User Account | `usermod -U username` |
+| Check User Groups | `groups username` |
+
+---
+
+### **🚀 Next Steps:**
+Let me know if you need help with **permissions, sudo access, or automation for user management!** 💡
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## **User & Group Management Analysis in RHEL**  
+
+Analyzing **user and group management** ensures proper **security, access control, and compliance** in Red Hat Enterprise Linux (RHEL). Below is a structured approach to analyze user and group configurations, identify issues, and implement best practices.
+
+---
+
+### **1. List All Users (Verify System Accounts)**
+```bash
+cat /etc/passwd
+```
+✅ **Expected Output Format:**  
+```
+root:x:0:0:root:/root:/bin/bash
+balaji:x:1001:1001::/home/balaji:/bin/bash
+```
+📌 **Analysis:**  
+- **UID 0** → Root user.  
+- **UID ≥ 1000** → Regular users.  
+- **Check shell (`/bin/bash` or `/sbin/nologin`)** → Users with `/sbin/nologin` cannot log in.  
+
+📌 **Action (if unnecessary accounts exist):**  
+```bash
+userdel -r username
+```
+
+---
+
+### **2. Check All Groups & Their Members**
+```bash
+cat /etc/group
+```
+📌 **Analysis:**  
+- Verify if system groups (`wheel`, `adm`, `sudo`) have correct users.  
+- Ensure users are part of the **correct functional groups**.  
+
+📌 **Action (to add a user to a group):**  
+```bash
+usermod -aG mygroup username
+```
+📌 **Action (to remove an unnecessary group):**  
+```bash
+groupdel mygroup
+```
+
+---
+
+### **3. Check a Specific User’s Groups & Permissions**
+```bash
+id balaji
+```
+✅ **Example Output:**  
+```
+uid=1001(balaji) gid=1001(mygroup) groups=1001(mygroup),10(wheel)
+```
+📌 **Analysis:**  
+- **Ensure critical users have `wheel` group** for sudo access.  
+- **Avoid unnecessary groups to reduce security risks.**  
+
+📌 **Action (change primary group):**  
+```bash
+usermod -g newgroup balaji
+```
+
+---
+
+### **4. Check User Login History (Detect Unauthorized Logins)**
+```bash
+last
+```
+✅ **Expected Output:**  
+```
+balaji  pts/0  192.168.1.10  Mon Mar  9 10:00   still logged in
+```
+📌 **Analysis:**  
+- **Monitor logins from unexpected locations/IPs.**  
+- **Ensure no inactive accounts remain open.**  
+
+📌 **Action (disable inactive user accounts):**  
+```bash
+usermod -L balaji  # Lock account
+passwd -l balaji   # Lock password
+```
+
+---
+
+### **5. Check Superuser (Sudo) Permissions**
+```bash
+cat /etc/sudoers | grep -E '^%wheel|ALL='
+```
+✅ **Expected Output:**  
+```
+%wheel  ALL=(ALL)  ALL
+```
+📌 **Analysis:**  
+- Ensure only **trusted users** have sudo access.  
+- Remove unauthorized sudo users to enhance security.  
+
+📌 **Action (add/remove sudo access):**  
+```bash
+usermod -aG wheel balaji  # Add sudo access
+gpasswd -d balaji wheel   # Remove sudo access
+```
+
+---
+
+### **6. Find Locked/Disabled Accounts**
+```bash
+passwd -S balaji
+```
+✅ **Example Output:**  
+```
+balaji P 03/09/2025 0 99999 7 -1 (Password set, active)
+```
+📌 **Analysis:**  
+- `L` → Locked  
+- `NP` → No password (security risk)  
+- `P` → Active user  
+
+📌 **Action (lock or unlock a user account):**  
+```bash
+usermod -L balaji  # Lock user
+usermod -U balaji  # Unlock user
+```
+
+---
+
+### **7. Identify Orphaned (Unowned) Files**
+```bash
+find / -nouser -o -nogroup
+```
+📌 **Analysis:**  
+- **Files without an owner/group pose security risks.**  
+- Ensure all files belong to valid users.  
+
+📌 **Action (assign proper ownership):**  
+```bash
+chown root:root /path/to/file
+```
+
+---
+
+### **📌 Common User & Group Issues and Fixes**
+| **Issue** | **Cause** | **Solution** |
+|-----------|----------|-------------|
+| User can't log in | No valid shell (`/sbin/nologin`) | `usermod -s /bin/bash username` |
+| Can't switch user (`su - username`) | No password set | `passwd username` |
+| User lacks sudo access | Not in `wheel` group | `usermod -aG wheel username` |
+| User exists but home directory is missing | Created without `-m` | `mkdir /home/username && chown username:username /home/username` |
+
+---
+
+### **✅ Final Recommendations**
+- ✅ Regularly audit users & groups (`cat /etc/passwd`, `cat /etc/group`).  
+- ✅ Restrict unnecessary sudo access (`cat /etc/sudoers`).  
+- ✅ Lock inactive accounts (`passwd -l username`).  
+- ✅ Check user activity logs (`last`, `w`).  
+- ✅ Assign proper permissions to files (`find / -nouser -o -nogroup`).  
+
+---
+
+### **🚀 Next Steps:**
+Let me know if you need help fixing any **specific user/group issue** or need **automation scripts** for user management! 💡
